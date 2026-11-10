@@ -1,0 +1,13 @@
+{
+	"$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+	"runtime.version": "Lua 5.1",
+	"runtime.builtin": { "basic": "enable", "string": "enable", "table": "enable", "math": "enable" },
+	"workspace.ignoreDir": ["build", "dist", "node_modules", "tests"],
+	"diagnostics.disable": ["need-check-nil", "undefined-field", "inject-field", "lowercase-global"],
+	"diagnostics.globals": [
+		"_G", "print", "format", "date", "ElvUI", "ElvDB", "ElvPrivateDB", "LibStub", "Details", "DetailsFramework",
+		"C_AddOns", "C_Timer", "C_EditMode", "Enum", "CreateFrame", "UIParent", "Minimap", "StaticPopupDialogs",
+		"StaticPopup_Show", "SlashCmdList", "SLASH_BUSHIDOPRIVATE1", "ReloadUI", "InCombatLockdown", "UnitClass",
+		"UnitExists", "issecretvalue", "BushidoPrivateRestoreDB", "hooksecurefunc"
+	]
+}

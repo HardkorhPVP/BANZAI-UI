@@ -1,0 +1,13 @@
+# generated locally from third-party sources: never commit
+build/
+dist/
+node_modules/
+*.log
+build-manifest.json
+# development references only (third-party images Darren collected): never built, packaged or committed
+design-references/
+# 1.3.1 third-party runtime fonts (Want Coffee, Khurasan: personal use, no redistribution grant): built and deployed locally, never committed or packaged
+assets/fonts/
+
+# release packages (built by tools/release.js, reproducible from the tagged source)
+release/

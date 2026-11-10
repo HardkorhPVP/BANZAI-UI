@@ -1,0 +1,31 @@
+## Interface: 120105
+## Title: |cff9cff4dBanzai|r Art
+## Notes: BANZAI UI by HARDKORH - Banzai Art. Bamboo frames and panels (CLASS / BANZAI / HARDKORH borders; SOLID / GLASS / PARCHMENT), BANZAI CLASSIC or SPLIT unit frames, Details and chat panels, BUFFS panel, objective tracker, cast history, action buttons, cooldown bars, PvP frames, tooltips, AFK screen, the original BANZAI class identities and the display fonts (BANZAI Default: Shojumaru). Requires ElvUI and JiberishMedia.
+## Author: HARDKORH
+## Version: 1.4.0
+## IconTexture: Interface\AddOns\BushidoPrivateCompat\media\BanzaiIcon
+## Dependencies: ElvUI, JiberishMedia
+## OptionalDeps: Details, ElvUI_mMediaTag, ElvUI_EltreumUI, JiberishIcons
+## SavedVariables: BanzaiCompatDB
+
+Geometry.lua
+IdentityManifest.lua
+Theme.lua
+FontBakeoff.lua
+Tags.lua
+Compat.lua
+Health.lua
+Identity.lua
+Split.lua
+CastBar.lua
+PvPFrames.lua
+TargetPlate.lua
+Tooltip.lua
+Bar.lua
+Info.lua
+Tracker.lua
+CastHistory.lua
+ActionButtons.lua
+CooldownBars.lua
+AFK.lua
+Preview.lua

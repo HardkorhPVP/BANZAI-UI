@@ -1,0 +1,15 @@
+{
+  "name": "bushido-private-restoration",
+  "version": "0.6.0",
+  "private": true,
+  "description": "PRIVATE LOCAL USE ONLY - tooling for BANZAI, Darren's local Bushido restoration. Not for publication.",
+  "scripts": {
+    "build": "node tools/build.js",
+    "validate": "node tools/validate.js",
+    "test": "node tests/run.js"
+  },
+  "devDependencies": {
+    "fengari": "^0.1.4",
+    "luaparse": "^0.3.1"
+  }
+}
