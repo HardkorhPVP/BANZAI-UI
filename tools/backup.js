@@ -15,10 +15,11 @@ const { execSync } = require('child_process');
 const thirdparty = require('./thirdparty');
 
 const ROOT = path.join(__dirname, '..');
-const RETAIL = 'D:\\Program Files (x86)\\World of Warcraft\\_retail_';
+const local = require('./lib/local');
+const RETAIL = path.join(local.WOW, '_retail_');
 const ADDONS = path.join(RETAIL, 'Interface', 'AddOns');
 const WTF = path.join(RETAIL, 'WTF');
-const BACKUP_ROOT = 'C:\\Users\\DarrenSteinke\\Desktop\\Bushido-Private-Restoration-Backups';
+const BACKUP_ROOT = local.RETAIL_BACKUPS;
 const DEPLOYED = ['JiberishMedia', 'BushidoPrivateCompat', 'BushidoPrivateRestore'];
 
 function copyDir(from, to) {

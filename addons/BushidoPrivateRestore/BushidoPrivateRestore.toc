@@ -1,13 +1,17 @@
-## Interface: 120105
+## Interface: 120105, 16001
 ## Title: |cff9cff4dBanzai|r
 ## Notes: BANZAI UI by HARDKORH. Settings, Character Sync and Restore Pre-Banzai. Settings: ElvUI options > BANZAI, or /banzai. Requires ElvUI; Banzai Art (BushidoPrivateCompat) and JiberishMedia for the full look.
 ## Author: HARDKORH
-## Version: 1.4.0
+## Version: 1.5.0
+## X-Curse-Project-ID: 1793334
+## X-Wago-ID: BKpEZrGE
+## X-Website: https://github.com/HardkorhPVP/BANZAI-UI
 ## IconTexture: Interface\AddOns\BushidoPrivateCompat\media\BanzaiIcon
 ## Dependencies: ElvUI
 ## OptionalDeps: ElvUI_EltreumUI, ElvUI_mMediaTag, !mMT_MediaPack, Details, JiberishMedia, JiberishIcons, !KalielsTracker, MinimapButtonButton, BushidoPrivateCompat
 ## SavedVariables: BushidoPrivateRestoreDB
 
+Flavor.lua
 Payloads.lua
 Transform.lua
 Restore.lua

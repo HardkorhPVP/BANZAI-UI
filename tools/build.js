@@ -128,6 +128,9 @@ function main() {
   ];
   fs.writeFileSync(path.join(restoreDir, 'Payloads.lua'), lines.join('\n'));
 
+  // 3b. 1.5.0-dev1: the shared client adapter, one source file copied unchanged into both addons (each loads it first)
+  for (const dir of [compatDir, restoreDir]) fs.copyFileSync(path.join(ROOT, 'shared', 'Flavor.lua'), path.join(dir, 'Flavor.lua'));
+
   // 4. manifest
   const manifest = {};
   const walk = (dir) => {

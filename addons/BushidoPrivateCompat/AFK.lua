@@ -198,6 +198,11 @@ function AFK:Fill(preview)
 	local index = Call(GetSpecialization)
 	local specID, specName
 	if index then specID, specName = Call(GetSpecializationInfo, index) end
+	-- 1.5.0-dev1 (WoW Forever): the leading talent tree's name (no specialization exists there)
+	if ns.Flavor and ns.Flavor.IsForever() then
+		local spec = ns.Flavor.PlayerSpec()
+		specID, specName = nil, spec and spec.name or nil
+	end
 	local level = Call(UnitLevel, 'player')
 	local zone = Call(GetZoneText)
 	local classColor = (token and Theme:ClassColor(token)) or { 1, 1, 1 }
@@ -220,7 +225,7 @@ function AFK:Fill(preview)
 	f.where:SetShown(#where > 0)
 
 	f.brand:SetText(Theme:GradientText('UI BY HARDKORH', Theme.COLORS.lime, Theme.COLORS.violet))
-	f.version:SetText('|cff8c919aBANZAI ' .. tostring(Theme.VERSION) .. '|r')
+	f.version:SetText('|cff8c919aBANZAI ' .. tostring(Theme.VERSION) .. (Theme.CHANNEL ~= 'release' and ('  ' .. tostring(Theme.CHANNEL)) or '') .. '|r')
 	f.logo:SetAlpha(brand)
 	f.tree:SetAlpha(0.9 * brand)
 	f.brand:SetAlpha(math.max(0.6, brand))

@@ -270,13 +270,184 @@ const MUTANTS_FONT_BAKEOFF = [
   ['selection lock fallback', 'dist/BushidoPrivateCompat/FontBakeoff.lua', 'unsupported text does not use Information Font as a whole', 'if face.information or not supports(face, text) then return self:SmallFont() end', 'if face.information then return self:SmallFont() end'],
   ['selection lock fallback size', 'dist/BushidoPrivateCompat/FontBakeoff.lua', 'default fallback retains the 105% scaled size', 'if defaultChoice and id == DEFAULT_KEY and path == self:SmallFont() then adjusted = fallbackSize end', 'if defaultChoice and id == DEFAULT_KEY and path == self:SmallFont() then adjusted = size end'],
 ];
-const SETS = { '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF };
+// 1.5.0-dev1 (private Forever proof): the client adapter and what Banzai does differently on WoW Forever. Each mutant
+// names the one suite that guards it (client: the adapter on Retail; forever_restore / forever_compat: the Forever stand-in).
+const FLAVOR_R = 'dist/BushidoPrivateRestore/Flavor.lua';
+const FLAVOR_C = 'dist/BushidoPrivateCompat/Flavor.lua';
+const ROLES = 'dist/BushidoPrivateRestore/Roles.lua';
+const TAGS = 'dist/BushidoPrivateCompat/Tags.lua';
+const BAR = 'dist/BushidoPrivateCompat/Bar.lua';
+const SYNC = 'dist/BushidoPrivateRestore/Sync.lua';
+const MUTANTS_FOREVER = [
+  // the macro-condition adapter (Transform T.AdaptConditions)
+  ['condition adapter', TRANSFORM, 'the pet battle condition stays on WoW Forever', 'neverTrue = { petbattle = true },', 'neverTrue = {},', 'client'],
+  ['condition adapter', TRANSFORM, 'an always-true condition stays', 'alwaysTrue = { nopetbattle = true },', 'alwaysTrue = {},', 'client'],
+  ['condition adapter', TRANSFORM, 'a numbered-spec condition is carried over', 'unknown = { spec = true, nospec = true },', 'unknown = {},', 'client'],
+  ['condition adapter', TRANSFORM, 'a bracket that can never be true is kept without its condition (the bar would always hide)', 'if not never then kept[#kept + 1]', 'if true then kept[#kept + 1]', 'client'],
+  ['condition adapter', TRANSFORM, 'an emptied setting is written as an empty string', "if string.gsub(out, '[%s;]', '') == '' then return nil, removed end", 'if false then return nil, removed end', 'client'],
+  ['condition adapter', TRANSFORM, 'the space before the result is lost with the dropped bracket', 'text = text .. bracket.text .. (i == #kept and finalGap or bracket.gap)', 'text = text .. bracket.text .. bracket.gap', 'client'],
+  ['Retail untouched', TRANSFORM, 'Retail conditions are adapted too', 'local rules = T.CLIENTS[flavor]\n\tlocal removed, seen = {}, {}', 'local rules = T.CLIENTS[flavor] or T.CLIENTS.FOREVER\n\tlocal removed, seen = {}, {}', 'client'],
+  ['Retail untouched', TRANSFORM, 'the Retail profile is adapted too', "local rules = T.CLIENTS[flavor]\n\tif type(profile) ~= 'table' or not rules then return report end", "local rules = T.CLIENTS[flavor] or T.CLIENTS.FOREVER\n\tif type(profile) ~= 'table' or not rules then return report end", 'client'],
+  // the profile adapter (Transform T.AdaptProfile)
+  ['profile adapter', TRANSFORM, 'a setting that cannot be carried over is left in the profile', 'if adapted == nil then removals[#removals + 1] = { owner, key } else owner[key] = adapted end', 'if adapted ~= nil then owner[key] = adapted end', 'client'],
+  ['profile adapter', TRANSFORM, 'every string is treated as a macro condition', "if key == 'visibility' or string.find(parent, '%.paging$') then", 'if true then', 'client'],
+  ['profile adapter', TRANSFORM, 'an unregistered datatext is rewritten', "if value ~= '' and datatexts[value] == false then", "if value ~= '' and datatexts[value] == false then owner[key] = '' end if value ~= '' and datatexts[value] == false then", 'client'],
+  ['profile adapter', TRANSFORM, 'a name the client was not asked about is reported as missing', 'if name and tags[name] == false then', 'if name and not tags[name] then', 'client'],
+  ['profile adapter', TRANSFORM, 'a tag is named with its prefix', "local first = string.match(bracket, '^.*>()') or 2", 'local first = 2', 'client'],
+  // the client and the talent trees (shared/Flavor.lua, as built into Banzai)
+  ['client detection', FLAVOR_R, 'no project constants reads as WoW Forever', 'if project ~= nil and camelot ~= nil and project == camelot then return Flavor.FOREVER end', 'if project == camelot then return Flavor.FOREVER end', 'client'],
+  ['client detection', FLAVOR_R, 'ElvUI\'s own Forever flag is ignored', "if type(E) == 'table' and E.Forever == true then return Flavor.FOREVER end", '', 'client'],
+  ['client detection', FLAVOR_R, 'any interface from 16000 up is WoW Forever (Retail too)', 'if interface and interface >= 16000 and interface < 17000 then return Flavor.FOREVER end', 'if interface and interface >= 16000 then return Flavor.FOREVER end', 'client'],
+  ['client detection', FLAVOR_R, 'an older interface is WoW Forever (Classic Era too)', 'if interface and interface >= 16000 and interface < 17000 then return Flavor.FOREVER end', 'if interface and interface < 17000 then return Flavor.FOREVER end', 'client'],
+  ['client detection', FLAVOR_R, 'everything exists on every client', 'return not (absent and absent[feature])', 'return true', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'a tie names a tree', 'if not best or tied or best.points <= 0 then return nil, trees end', 'if not best or best.points <= 0 then return nil, trees end', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'no points names a tree', 'if not best or tied or best.points <= 0 then return nil, trees end', 'if not best or tied then return nil, trees end', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'uncommitted points are counted', 'if traits.ConfigHasStagedChanges and First(traits.ConfigHasStagedChanges, configID) ~= false then', 'if false then', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'the list order instead of the game\'s order', 'if a.order ~= b.order then return a.order < b.order end', '', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'a tree without a name is accepted', 'if not (groupID and name) or byGroup[groupID] then return nil end', 'if not groupID then return nil end', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'unreadable points are accepted', 'if not (spent and spent >= 0) or answered[tree] then return nil end', 'if answered[tree] then return nil end', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'a tree answered twice is accepted', 'if not (spent and spent >= 0) or answered[tree] then return nil end', 'if not (spent and spent >= 0) then return nil end', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'pending edits show another configuration\'s trees', 'return kept and kept.configID == configID and kept.trees or nil', 'return kept and kept.trees or nil', 'forever_restore'],
+  ['talent trees', FLAVOR_R, 'the talent reading is skipped on WoW Forever', 'if Flavor.IsForever() then\n\t\tlocal tree, trees = Flavor.TalentTree()', 'if false then\n\t\tlocal tree, trees = Flavor.TalentTree()', 'forever_restore'],
+  ['role mapping', ROLES, 'the verified Restoration tree loses its HEALER layout', "if role == 'HEALER' or role == 'DPS' then return role, 'verified class/tree position' end", "if role == 'DPS' then return role, 'verified class/tree position' end", 'forever_restore'],
+  // APPLY BANZAI on WoW Forever (Restore.lua)
+  ['prerequisites', RESTORE, 'a missing required component does not stop the apply', 'if Flavor and Flavor.IsForever() then\n\t\tlocal pre = self:Preflight()\n\t\tif pre.blocked then', 'if false then\n\t\tlocal pre = self:Preflight()\n\t\tif pre.blocked then', 'forever_restore'],
+  ['prerequisites', SYNC, 'a blocked apply leaves a pre-Banzai snapshot behind', 'if ns.Flavor and ns.Flavor.IsForever() and ns.Restore.Preflight then', 'if false then', 'forever_restore'],
+  ['prerequisites', RESTORE, 'an optional component blocks', "if item.required and (item.state == 'MISSING' or item.state == 'NOT READY') and not out.blocked then", "if (item.state == 'MISSING' or item.state == 'NOT READY') and not out.blocked then", 'forever_restore'],
+  ['prerequisites', RESTORE, 'a loaded addon is READY whatever it lacks', "item.state = problem and 'NOT READY' or 'READY'", "item.state = 'READY'", 'forever_restore'],
+  ['adapter wiring', RESTORE, 'the adapter does not run at APPLY BANZAI', "self:AdaptClient(reason or 'manual', true)", 'local _ = 0', 'forever_restore'],
+  ['adapter wiring', RESTORE, 'the adapter does not run when the character layer is written', "self:AdaptClient('character layer')", 'local _ = 0', 'forever_restore'],
+  ['adapter wiring', RESTORE, 'a profile carried over is not adapted while the addons load', "self:AdaptClient('addon loaded')", 'local _ = 0', 'forever_restore'],
+  ['adapter wiring', RESTORE, 'a failing adapter stops the apply', 'local ok, report = pcall(T.AdaptProfile, profile, flavor, state.known)', 'local ok, report = true, T.AdaptProfile(profile, flavor, state.known)', 'forever_restore'],
+  ['adapter wiring', RESTORE, 'the adapter runs on Retail', "local flavor = Flavor and Flavor.Id() or 'RETAIL'\n\tif not T.CLIENTS[flavor] then return nil end\n\tlocal profile = _G.ElvDB", "local flavor = 'FOREVER'\n\tlocal profile = _G.ElvDB", 'client'],
+  ['adapter report', RESTORE, 'a re-apply forgets what was adapted', "local changes = (#report.changes == 0 and type(earlier) == 'table') and earlier or report.changes", 'local changes = report.changes', 'forever_restore'],
+  ['adapter report', RESTORE, 'every tag is taken as registered', 'known.tags[name] = ok and method ~= nil', 'known.tags[name] = true', 'forever_restore'],
+  // Banzai Art on WoW Forever
+  ['no inspect spec', TAGS, 'another player is inspected for a spec', "if ns.Flavor and not ns.Flavor.Has('inspectSpecialization') then return false end", '', 'forever_compat'],
+  ['no inspect spec', TAGS, 'another player gets a spec', "elseif IsOtherPlayer(unit) and not (ns.Flavor and not ns.Flavor.Has('inspectSpecialization')) then", 'elseif IsOtherPlayer(unit) then', 'forever_compat'],
+  ['talent identity', TAGS, 'the identity line skips the talent tree', 'if Flavor and Flavor.IsForever() then\n\t\tlocal spec = Flavor.PlayerSpec()\n\t\treturn spec and spec.name or nil', 'if false then\n\t\tlocal spec = Flavor.PlayerSpec()\n\t\treturn spec and spec.name or nil', 'forever_compat'],
+  ['talent identity', ID_LUA, 'the Fabled icon ignores Jiberish Icons\' talent reading', 'if ns.Flavor and ns.Flavor.IsForever() then\n\t\t\tlocal JI = Jiberish()', 'if false then\n\t\t\tlocal JI = Jiberish()', 'forever_compat'],
+  ['no inspect spec', ID_LUA, 'another player gets spec art', 'if ns.Flavor and ns.Flavor.IsForever() then return nil end\n\tif arenaIndex and GetArenaOpponentSpec then', 'if arenaIndex and GetArenaOpponentSpec then', 'forever_compat'],
+  ['no inspect spec', ID_LUA, 'arena preparation reads the starter ID', 'if ns.Flavor and ns.Flavor.IsForever() then return nil end -- 1.5.0-dev1: a starter ID there', 'do end -- 1.5.0-dev1: a starter ID there', 'forever_compat'],
+  ['absent entries', BAR, 'every panel entry shows on every client', 'return not (def.needs and Flavor and not Flavor.Has(def.needs))', 'return true', 'forever_compat'],
+  ['absent entries', FLAVOR_C, 'everything exists on every client (Banzai Art)', 'return not (absent and absent[feature])', 'return true', 'forever_compat'],
+];
+// 1.5.0-dev3 (private Forever proof): the Forever chat layout, the window skins' load order, enable / disable, optional-addon
+// absence, material selection, adapter ownership, and the Restore side. Each mutant names the suite that guards it.
+const CHAT = 'dist/BushidoPrivateCompat/ChatLayout.lua';
+const SKINS = 'dist/BushidoPrivateCompat/Skins.lua';
+const ADAPT = 'dist/BushidoPrivateCompat/SkinAdapters.lua';
+const OPTIONS = 'dist/BushidoPrivateRestore/Options.lua';
+const FS = 'forever_skins';
+const MUTANTS_DEV3 = [
+  // chat layout application
+  ['chat layout', CHAT, 'the stray window is never docked', 'local ok = Call(dockFrame, item.chat, count + 1, false)', 'local ok = true', FS],
+  ['chat layout', CHAT, 'the docked window takes the place of General on show', 'count + 1, false)', 'count + 1, true)', FS],
+  ['chat layout', CHAT, 'General is not made ElvUI\'s left-panel window', 'profile.panelSnapLeftID = id', 'profile.panelSnapLeftID = nil', FS],
+  ['chat layout', CHAT, 'ElvUI is not asked to position its chat windows', "if type(CH.PositionChats) == 'function' then Call(CH.PositionChats, CH) end", '', FS],
+  ['chat layout', CHAT, 'a window floating anywhere is docked', 'if Chat.Overlaps(chat, zone) then', 'if true then', FS],
+  ['chat layout', CHAT, 'a whisper window is docked', ' and not chat.isTemporary', '', FS],
+  ['chat layout', CHAT, 'the combat log is docked', 'and not (_G.IsCombatLog and _G.IsCombatLog(chat)) then', 'then', FS],
+  ['chat layout', CHAT, 'chat windows are docked in combat', "\tif InCombatLockdown() then\n\t\tself.pending = true\n\t\treturn false, 'waiting (combat)'\n\tend", '', FS],
+  ['chat layout', CHAT, 'the chat is arranged off the Banzai profile', 'return (ns.Flavor and ns.Flavor.IsForever() and Compat.Active() and Theme:DB().chatFrame and true) or false', 'return (ns.Flavor and ns.Flavor.IsForever() and Theme:DB().chatFrame and true) or false', FS],
+  ['chat layout', CHAT, 'the chat is arranged with the Banzai chat frame off', 'return (ns.Flavor and ns.Flavor.IsForever() and Compat.Active() and Theme:DB().chatFrame and true) or false', 'return (ns.Flavor and ns.Flavor.IsForever() and Compat.Active() and true) or false', FS],
+  ['Retail untouched', CHAT, 'the chat is arranged on Retail too', 'return (ns.Flavor and ns.Flavor.IsForever() and Compat.Active() and Theme:DB().chatFrame and true) or false', 'return (Compat.Active() and Theme:DB().chatFrame and true) or false', 'retail_skins'],
+  // Restore behaviour of the chat adapter
+  ['restore', CHAT, 'where a docked window was is not kept', 'saved[item.frame] = Placement(item) or before or false -- where it is now', 'saved[item.frame] = before or false -- where it is now', FS],
+  ['restore', CHAT, 'an older place is kept when a window is docked again', 'saved[item.frame] = Placement(item) or before or false -- where it is now', 'saved[item.frame] = before or Placement(item) or false -- where it is now', FS],
+  ['restore', CHAT, 'a hand-back blocked by combat is forgotten', 'self.pending = (count == nil) -- blocked by combat', 'self.pending = false -- blocked by combat', FS],
+  ['chat layout', CHAT, 'ElvUI does not position its chat windows after a dock when it already holds General', "if docked and type(CH.PositionChats) == 'function' then Call(CH.PositionChats, CH) end", '', FS],
+  ['chat layout', COMPAT, 'the chat windows and skins are passed over on every roster change', ' and not self.rosterBuild then', ' then', FS],
+  ['material', SKINS, 'ElvUI\'s recolour of a cleared panel is not followed', 'if panel ~= nil and muted[panel] ~= nil then Skins:Mute(panel) end', '', FS],
+  ['ownership', SKINS, 'any ElvUI panel is cleared when ElvUI recolours it', 'if panel ~= nil and muted[panel] ~= nil then Skins:Mute(panel) end', 'if panel ~= nil then Skins:Mute(panel) end', FS],
+  ['restore', OPTIONS, 'the glass opacity does not reach ElvUI\'s panels', 'if R.ApplyElvUIPanels then R:ApplyElvUIPanels() end Notify() end, { isPercent = true }),', 'Notify() end, { isPercent = true }),', 'forever_restore'],
+  ['restore', CHAT, 'a window renamed since is undocked too', " and (type(place) ~= 'table' or place.name == WindowName(chat))", '', FS],
+  ['restore', CHAT, 'the General window can be undocked', 'if Usable(chat) and chat ~= primary and chat.isDocked and type(undock)', 'if Usable(chat) and chat.isDocked and type(undock)', FS],
+  ['restore', CHAT, 'the record of docked windows is never cleared', '\tTheme:DB().chatDocked = nil\n\tself.state = { reason = reason, released = count }', '\tself.state = { reason = reason, released = count }', FS],
+  ['restore', CHAT, 'a handed-back window is not put where it was', "chat:SetPoint('BOTTOMLEFT', UIParent, 'BOTTOMLEFT', place.x, place.y)", '', FS],
+  ['restore', CHAT, 'switching the chat frame off keeps the windows docked', "local count, why = self:Release('chat frame off')", 'local count, why = 0, nil', FS],
+  ['restore', RESTORE, 'RESTORE PRE-BANZAI does not hand the chat windows back', "local ok, count = pcall(art.ChatLayout.Release, art.ChatLayout, 'restore')", 'local ok, count = true, 0', 'forever_restore'],
+  // load order
+  ['load order', SKINS, 'a late window is skinned before its owner\'s own skin ran', 'if C_Timer and C_Timer.After then C_Timer.After(0, run) else run() end\n\treturn #mine', 'run()\n\treturn #mine', FS],
+  ['load order', SKINS, 'any addon loading triggers every adapter', 'if adapter.addon == name then mine[#mine + 1] = adapter end', 'mine[#mine + 1] = adapter', FS],
+  ['load order', SKINS, 'an addon loading later is ignored', "if event == 'ADDON_LOADED' then\n\t\tSkins:OnAddonLoaded(name)", "if event == 'ADDON_LOADED' then\n\t\tdo end", FS],
+  ['load order', SKINS, 'windows are skinned in combat', "\tif InCombatLockdown() then\n\t\tself.pending = true\n\t\tstate.status = 'COMBAT'\n\t\treturn state.status\n\tend", '', FS],
+  ['load order', SKINS, 'what waited for combat is never done', '\telseif Skins.pending then\n\t\tSkins.pending = false', '\telseif false then\n\t\tSkins.pending = false', FS],
+  ['load order', SKINS, 'the OnShow post-hook is made again at every pass', "if not hooked[window] and window.HookScript then\n\t\thooked[window] = adapter\n\t\twindow:HookScript('OnShow', function() Skins:Touch(hooked[window]) end)\n\tend\n\treturn true", "if window.HookScript then\n\t\thooked[window] = adapter\n\t\twindow:HookScript('OnShow', function() Skins:Touch(hooked[window]) end)\n\tend\n\treturn true", FS],
+  ['load order', SKINS, 'an adapter attaches again at every pass', 'adapter.attached = (ok and result ~= false) or nil', 'adapter.attached = nil', FS],
+  // skin enable / disable
+  ['enable / disable', SKINS, 'a skin ignores its switch', 'return (Skins.Supported() and Compat.Active() and self:GroupEnabled(id)) or false', 'return (Skins.Supported() and Compat.Active()) or false', FS],
+  ['enable / disable', SKINS, 'windows are skinned off the Banzai profile', 'return (Skins.Supported() and Compat.Active() and self:GroupEnabled(id)) or false', 'return (Skins.Supported() and self:GroupEnabled(id)) or false', FS],
+  ['enable / disable', SKINS, 'one switch governs every group', 'return Theme:DB()[group.key] and true or false', 'return Theme:DB().skinBlizzard and true or false', FS],
+  ['enable / disable', SKINS, 'a switched-off skin stays on the window', "for _, spec in ipairs(list) do self:UnskinWindow(adapter, spec) end\n\t\tstate.status, state.detail, state.count = 'OFF', nil, 0", "state.status, state.detail, state.count = 'OFF', nil, 0", FS],
+  ['enable / disable', SKINS, 'taking the skin off leaves ElvUI\'s panel clear', '\tif s.base then\n\t\tself:Unmute(s.base)\n\t\ts.base = nil\n\tend', '', FS],
+  ['enable / disable', SKINS, 'taking the skin off leaves the BANZAI heading font', '\tif s.title then\n\t\tself:RestoreTitle(s.title)\n\t\ts.title = nil\n\tend', '', FS],
+  ['enable / disable', THEME, 'ElvUI panels are recoloured by default', 'skinElvUI = false,', 'skinElvUI = true,', FS],
+  ['enable / disable', THEME, 'a damaged switch value is kept', "if type(db[key]) ~= 'boolean' then db[key] = self.DEFAULTS[key] end", '', 'retail_skins'],
+  ['Retail untouched', SKINS, 'windows are skinned on Retail', 'return (ns.Flavor and ns.Flavor.IsForever()) or false', 'return true', 'retail_skins'],
+  // optional-addon absence
+  ['optional addon absent', SKINS, 'an adapter works on an addon that is not loaded', 'if not AddonLoaded(adapter.requires) then', 'if false then', FS],
+  ['optional addon absent', ADAPT, 'Baganator\'s item buttons and search box are treated as windows', "if type(details) ~= 'table' or details.regionType ~= 'ButtonFrame' then return false end", "if type(details) ~= 'table' then return false end", FS],
+  ['optional addon absent', ADAPT, 'Baganator is skinned under any of its themes', "if current ~= 'elvui' then return false,", 'if false then return false,', FS],
+  // material selection
+  ['material', SKINS, 'the material is always glass', "if mode == 'SOLID' or mode == 'PARCHMENT' then return mode end", 'if false then return mode end', FS],
+  ['material', SKINS, 'parchment is laid on a window without a heading band', 'local band = parchment and s.header ~= nil and s.header > 0', 'local band = parchment', FS],
+  ['material', SKINS, 'the parchment band shows on glass and solid', 'local band = parchment and s.header ~= nil and s.header > 0', 'local band = s.header ~= nil and s.header > 0', FS],
+  ['material', SKINS, 'a window\'s glass may be as thin as the HUD\'s', 'Theme:Glass(s.glass, math.max(self.GLASS_MIN, tonumber(db.glassOpacity) or 0.72))', 'Theme:Glass(s.glass, tonumber(db.glassOpacity) or 0.72)', FS],
+  ['material', SKINS, 'the heading is inked on a dark surface', 'self:StyleTitle(fs, s.banded)', 'self:StyleTitle(fs, true)', FS],
+  ['material', SKINS, 'the ink stays when the parchment goes', "elseif saved.inked and type(saved.r) == 'number' then", 'elseif false then', FS],
+  ['material', SKINS, 'the glass lies over ElvUI\'s opaque panel', 'if base and self:Mute(base) then\n\t\ts.base = base', 'if false then\n\t\ts.base = base', FS],
+  ['material', SKINS, 'ElvUI\'s recoloured panel is not cleared again', '\telseif a ~= 0 then\n\t\tmuted[base] = a', '\telseif false then\n\t\tmuted[base] = a', FS],
+  // adapter ownership
+  ['ownership', SKINS, 'a frame BANZAI already owns can be skinned a second time', ' and not self.GROUP[adapter.group].owned', '', FS],
+  ['ownership', ADAPT, 'a window ElvUI has not skinned gets the surface (BANZAI would cover stock art)', "if Skins.Base(spec.frame) then return true end\n\treturn false, 'ElvUI has not skinned it'", "do return true end\n\treturn false, 'ElvUI has not skinned it'", FS],
+  ['ownership', ADAPT, 'Zygor is re-tinted while its skin is off', "if not Skins:Owns('zygor') then return end", '', FS],
+  ['ownership', ADAPT, 'Zygor\'s own opacity is overridden', 'alpha * (ownAlpha or 1) }', 'alpha }', FS],
+  ['ownership', ADAPT, 'BANZAI\'s own tint is taken for Zygor\'s colour', 'if not Same(current, self.set[part.id]) then self.own[part.id] = current end', 'self.own[part.id] = current', FS],
+  ['ownership', ADAPT, 'switching Zygor off leaves the BANZAI colours on it', 'if on then self:Tint(material) else self:Untint() end', 'if on then self:Tint(material) end', FS],
+  ['ownership', ADAPT, 'Zygor\'s skin pass is not followed', "if type(viewer[method]) == 'function' then hooksecurefunc(viewer, method, Zygor.AfterSkin) end", '', FS],
+  ['ownership', ADAPT, 'a BANZAI surface is laid over Zygor\'s own body', 'return { { frame = bar, anchor = bar, accentOnly = true } }', 'return { { frame = bar, anchor = bar } }', FS],
+  ['ownership', COMPAT, 'the dev2 button containment runs beside the button addon', "\tlocal owner = Compat.MinimapButtonManager()\n\tif owner then\n\t\tself.minimapButtonsPending = nil\n\t\treturn false, 'left to ' .. owner\n\tend", '', FS],
+  ['ownership', COMPAT, 'Eltruism\'s button bar is driven beside the button addon', "\tif Compat.MinimapButtonManager() then -- 1.5.0-dev3: the button addon's business; Eltruism's bar is not driven from here\n\t\tself.minimapButtonsPending = nil\n\t\treturn\n\tend", '', FS],
+  ['ownership', COMPAT, 'a button addon is always assumed (dev2 containment lost without one)', 'if loaded(name) then return name end', 'do return name end', 'forever_compat'],
+  ['ownership', RESTORE, 'the button addon\'s position is written on WoW Forever', "if Flavor and Flavor.IsForever() then return 'left to MinimapButtonButton' end", '', 'forever_restore'],
+  ['Retail untouched', RESTORE, 'the button addon is left alone on Retail too (1.4.0 placed it)', "if Flavor and Flavor.IsForever() then return 'left to MinimapButtonButton' end", "do return 'left to MinimapButtonButton' end", 'client'],
+  // Restore side of the window skins
+  ['restore', RESTORE, 'ELVUI PANELS is written with its switch off', "local on = CompatSetting('skinElvUI', false) == true", 'local on = true', 'forever_restore'],
+  ['restore', RESTORE, 'BANZAI\'s own tone is recorded as the profile\'s panel colour', 'elseif not SameColor(general.backdropfadecolor, state.written) and not SameColor(general.backdropfadecolor, want) then', 'elseif not SameColor(general.backdropfadecolor, want) then', 'forever_restore'],
+  ['restore', RESTORE, 'a rebuilt profile\'s own panel colour is never recorded', 'elseif not SameColor(general.backdropfadecolor, state.written) and not SameColor(general.backdropfadecolor, want) then', 'elseif false then', 'forever_restore'],
+  ['restore', RESTORE, 'switching ELVUI PANELS off leaves the BANZAI tone', "general.backdropfadecolor = T.DeepCopy(db.elvuiPanels.previous) or nil -- (none before: ElvUI's own default again)", '', 'forever_restore'],
+  ['restore', RESTORE, 'ElvUI is told to recolour in combat', " and not InCombatLockdown() then\n\t\tif type(E.UpdateMedia) == 'function'", " then\n\t\tif type(E.UpdateMedia) == 'function'", 'forever_restore'],
+  ['restore', RESTORE, 'any setting passes as a window-skin switch', 'if not self.WINDOW_SKINS[key] then return false end', '', 'forever_restore'],
+  ['Retail untouched', RESTORE, 'the ElvUI panel colour is written on Retail', "if not (skins and skins.Supported and skins.Supported()) then return 'not on this client' end", "if not skins then return 'not on this client' end", 'client'],
+  ['Retail untouched', OPTIONS, 'the WINDOW SKINS page shows on Retail', '}, { hidden = function() return not Options.SkinsSupported() end }),', '}, { hidden = function() return false end }),', 'client'],
+];
+// 1.5.0 release: what may be in a package, which clients it is for, and how they are named to the platforms
+// (tools/release.js, tools/publish.js; guarded by tests/test_release.js).
+const RELEASE_JS = 'tools/release.js';
+const PUBLISH_JS = 'tools/publish.js';
+const MUTANTS_RELEASE = [
+  ['package scan', RELEASE_JS, 'a -dev version in a TOC may ship', '{ re: /^## Version:.*-(dev|RC)/i,', '{ re: /^## Version:.*-(RC)/i,', 'release'],
+  ['package scan', RELEASE_JS, 'the proof label may stand anywhere', 'allow: (f, line) => /(Theme|Restore)\\.lua$/.test(f) && ', 'allow: (f, line) => true || ', 'release'],
+  ['package scan', RELEASE_JS, 'only the first occurrence in a file is judged', 'for (const m of text.matchAll(every)) {', 'for (const m of [...text.matchAll(every)].slice(0, 1)) {', 'release'],
+  ['package scan', RELEASE_JS, 'any Discord invite may stand in the documentation', " && /https:\\/\\/discord\\.gg\\/sv2WNwk2WZ\\b/.test(line || '')", '', 'release'],
+  ['package scan', RELEASE_JS, 'a proof document may ship', '[/FOREVER-PROOF|FOREVER-PREP|mutation-|', '[/FOREVER-PREP|mutation-|', 'release'],
+  ['package scan', RELEASE_JS, 'a Forever backup snapshot name may ship', '{ re: /BANZAI-UI-Forever-Backups|forever-dev\\d+-\\d{8}/,', '{ re: /BANZAI-UI-Forever-Backups-never/,', 'release'],
+  ['clients', RELEASE_JS, 'Retail is advertised as WoW Forever', "(n >= 16000 && n < 17000 ? 'forever' : 'mainline')", "(n >= 16000 ? 'forever' : 'mainline')", 'release'],
+  ['clients', RELEASE_JS, 'WoW Forever is advertised as Retail', "(n >= 16000 && n < 17000 ? 'forever' : 'mainline')", "(n >= 16000 && n < 17000 ? 'mainline' : 'mainline')", 'release'],
+  ['clients', PUBLISH_JS, 'the patch string is derived wrongly', '`${Math.floor(n / 10000)}.', '`${Math.floor(n / 1000)}.', 'release'],
+  ['clients', PUBLISH_JS, 'WoW Forever is sent to Wago under the Retail key', "forever: 'supported_forever_patches'", "forever: 'supported_retail_patches'", 'release'],
+  ['clients', PUBLISH_JS, 'WoW Forever is sent to CurseForge as a Retail version', 'forever: 88568', 'forever: 517', 'release'],
+];
+const SETS = { dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
 
 function suiteFor(file) {
   if (file.startsWith('dist/BushidoPrivateRestore/')) return 'restore';
   if (file === PANEL_JS) return 'parchment'; // 1.3.7: the parchment material's generator and the preview's layout
   return file.startsWith('dist/') ? 'compat' : 'icons';
 }
+// 1.5.0-dev1: the source a built file comes from (the shared client adapter is one file copied into both addons)
+const sourceOf = (rel) => (/^dist\/[^/]+\/Flavor\.lua$/.test(rel) ? 'shared/Flavor.lua' : rel.replace(/^dist\//, 'addons/'));
 
 const originals = new Map();
 function restoreAll() { for (const [file, text] of originals) fs.writeFileSync(file, text); originals.clear(); }
@@ -288,26 +459,31 @@ function main() {
   const only = SETS[process.argv[2]] ? process.argv[3] : process.argv[2]; // a word of the mutants to run (all when absent)
   for (const rel of new Set(MUTANTS.map((m) => m[1]).filter((r) => r.startsWith('dist/')))) {
     if (!fs.existsSync(path.join(ROOT, rel))) throw new Error('run npm run build first (the Lua mutants change the built ' + rel + ')');
-    if (fs.readFileSync(path.join(ROOT, rel), 'utf8') !== fs.readFileSync(path.join(ROOT, rel.replace(/^dist\//, 'addons/')), 'utf8')) throw new Error('dist/ is older than addons/ (' + rel + ') - run npm run build first');
+    if (fs.readFileSync(path.join(ROOT, rel), 'utf8') !== fs.readFileSync(path.join(ROOT, sourceOf(rel)), 'utf8')) throw new Error('dist/ is older than its source (' + rel + ') - run npm run build first');
   }
-  // the suites must pass unmutated
-  for (const suite of [...new Set(MUTANTS.map((m) => suiteFor(m[1])))]) {
+  // the suites must pass unmutated (1.5.0-dev1: a mutant may name the one suite that guards it)
+  for (const suite of [...new Set(MUTANTS.map((m) => m[5] || suiteFor(m[1])))]) {
     const r = spawnSync(process.execPath, [path.join(ROOT, 'tests', 'run.js'), suite], { cwd: ROOT, encoding: 'utf8' });
     if (r.status !== 0) throw new Error(`the ${suite} suite fails without any mutation:\n${r.stdout}`);
   }
   const rows = [];
   console.log(`BANZAI ${set} targeted mutants (${MUTANTS.length})`);
-  for (const [contract, rel, what, find, replace] of MUTANTS.filter((m) => !only || m[2].includes(only) || m[0].includes(only))) {
+  for (const [contract, rel, what, findText, replaceText, suite] of MUTANTS.filter((m) => !only || m[2].includes(only) || m[0].includes(only))) {
     const file = path.join(ROOT, rel);
     const text = fs.readFileSync(file, 'utf8');
+    // 1.5.0-dev1: a mutant written with \n finds its place whatever line ending the checkout gave the file
+    const eol = text.includes('\r\n') ? '\r\n' : '\n';
+    const find = findText.replace(/\r?\n/g, eol);
+    const replace = replaceText.replace(/\r?\n/g, eol);
     const count = text.split(find).length - 1;
     if (count !== 1) { rows.push({ contract, what, rel, result: `NOT APPLIED (${count} matches)` }); continue; }
     originals.set(file, text);
     try {
       fs.writeFileSync(file, text.replace(find, () => replace));
       const t0 = Date.now();
-      const r = spawnSync(process.execPath, [path.join(ROOT, 'tests', 'run.js'), suiteFor(rel)], { cwd: ROOT, encoding: 'utf8' });
-      const failed = (r.stdout.match(/tests: \d+ passed, (\d+) failed/) || [])[1];
+      // 1.5.0-dev3: a mutant that makes a suite run away is stopped after five minutes and counts as caught (the run did not pass)
+      const r = spawnSync(process.execPath, [path.join(ROOT, 'tests', 'run.js'), suite || suiteFor(rel)], { cwd: ROOT, encoding: 'utf8', timeout: 300000 });
+      const failed = ((r.stdout || '').match(/tests: \d+ passed, (\d+) failed/) || [])[1];
       rows.push({ contract, what, rel, result: r.status !== 0 ? `killed (${failed || '?'} failing)` : 'SURVIVED', ms: Date.now() - t0 });
     } finally { restoreAll(); }
     const last = rows[rows.length - 1];

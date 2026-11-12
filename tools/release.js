@@ -1,13 +1,16 @@
 #!/usr/bin/env node
-// BANZAI UI release packaging (1.4.0): a DETERMINISTIC installation package from the audited build plus a
-// public-content safety scan and a release audit record. Nothing is uploaded or published by this tool.
+// BANZAI UI release packaging (1.4.0; 1.5.0: one package for Retail and WoW Forever): a DETERMINISTIC
+// installation package from the audited build plus a public-content safety scan and a release audit record.
+// Nothing is uploaded or published by this tool.
 //
-//   node tools/release.js        -> release/BANZAI-UI-<version>.zip (+ .sha256, release-audit-<version>.json)
+//   node tools/release.js        -> release/BANZAI-UI-<version>.zip (+ .sha256, release-audit-<version>.json,
+//                                   release.json: the clients the package is for, as WowUp reads it)
 //
-// Package layout (extract straight into World of Warcraft\_retail_\Interface\AddOns\):
+// Package layout (extract straight into World of Warcraft\_retail_\Interface\AddOns\ or ...\_forever_\Interface\AddOns\):
 //   BushidoPrivateCompat/   Banzai Art (the frames, panels, fonts, identity art)      - from dist/
 //   BushidoPrivateRestore/  Banzai (settings, Character Sync, Restore Pre-Banzai)     - from dist/
-//   BushidoPrivateRestore/docs/  the user documentation and notices from docs/release/ (when present)
+//   BushidoPrivateRestore/docs/  the user documentation and notices from docs/banzai-ui/ (1.5.0: the public
+//                                documentation folder itself, so the public source reproduces the package)
 // JiberishMedia is a separately distributed dependency (its own licence) and is NOT packaged; the
 // installation guide names it with ElvUI as required.
 //
@@ -23,7 +26,9 @@ const crypto = require('crypto');
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 const RELEASE_DIR = path.join(ROOT, 'release');
-const DOCS_DIR = path.join(ROOT, 'docs', 'release');
+const DOCS_DIR = path.join(ROOT, 'docs', 'banzai-ui');
+// the game clients a TOC interface number belongs to (release.json flavor names; WoW Forever is 16xxx)
+const FLAVOR = (n) => (n >= 16000 && n < 17000 ? 'forever' : 'mainline');
 const ADDONS = ['BushidoPrivateCompat', 'BushidoPrivateRestore'];
 const PRODUCT = 'BANZAI-UI';
 
@@ -81,17 +86,24 @@ const FORBIDDEN_FILES = [
   [/Gemini|Thumbs\.db|\.DS_Store|\.lua\.bak$|LiveHud|class-sources|provenance\.json/i, 'Gemini source, OS cache, scratch, the abandoned Live HUD or an identity source manifest'],
   [/WantCoffee|WantBanzai|Changchangwoodcut|RootsOfChina|Odishi/i, 'a font that is not shipped'],
   [/PVPVCR|Sylvanas|\bPS[_-]/i, 'PVPVCR or PS material'],
+  [/FOREVER-PROOF|FOREVER-PREP|mutation-|EVIDENCE\.md|build-manifest|\.sha256$|release\.json$/i, 'a proof document, mutation output or build record'],
 ];
-const USERNAME = (process.env.USERPROFILE || '').split(path.sep).pop() || 'DarrenSteinke';
+const USERNAME = (process.env.USERPROFILE || process.env.HOME || '').split(/[\\/]/).pop() || 'no-local-user'; // the local account name must never appear in a package
 const PATTERNS = [
   { re: new RegExp(USERNAME, 'i'), what: "Darren's local Windows username" },
   { re: /[A-Za-z]:\\(?!\\)/, what: 'an absolute Windows path (drive letter)', allow: (f) => /\/media\/fonts\/[^/]+\.txt$/.test(f) }, // a font author's verbatim install note (C:\WINDOWS\Fonts)
   { re: /(\/Users\/|\/home\/|C:\/Users)/, what: 'an absolute user path' },
   { re: /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/, what: 'an e-mail address', allow: (f) => /\/media\/fonts\/[^/]+\.txt$/.test(f) || /\/docs\//.test(f) }, // a font notice's own contact, or a support address in the user docs
   { re: /\bSFC\b|Dataverse/, what: 'SFC / Dataverse data' },
-  { re: /discord\.gg\/|discord\.com\/(api\/webhooks|channels)|discordapp/i, what: 'private Discord data' },
+  // (1.5.0: the project's public community invite - the one in the public README - may stand in the user documentation; nothing else of Discord)
+  { re: /discord\.gg\/|discord\.com\/(api\/webhooks|channels)|discordapp/i, what: 'private Discord data', allow: (f, line) => /\/docs\//.test(f) && /https:\/\/discord\.gg\/sv2WNwk2WZ\b/.test(line || '') && !/webhooks|channels|discordapp/i.test(line || '') },
   { re: /ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9-]+|-----BEGIN [A-Z ]*PRIVATE KEY-----|AIza[0-9A-Za-z_-]{30,}/, what: 'an API token, secret or access key' },
   { re: /Bushido-Private-Restoration-Backups|BANZAISLAND-Backups|predeploy-\d{8}/, what: 'a private backup path' },
+  { re: /BANZAI-UI-Forever-Backups|forever-dev\d+-\d{8}/, what: 'a private backup path' },
+  { re: /^## Version:.*-(dev|RC)/i, what: 'a proof / candidate version in a TOC' },
+  // 1.5.0: the proof-build label. The only place it may stand is the one line in each addon that derives the channel
+  // from the version (a "-dev" build names itself; a release never shows it).
+  { re: /PRIVATE PROOF/, what: 'the private proof label', allow: (f, line) => /(Theme|Restore)\.lua$/.test(f) && /CHANNEL = string\.find\((Theme\.)?VERSION, '-dev', 1, true\) and 'PRIVATE PROOF' or 'release'/.test(line || '') },
   { re: /PVPVCR|Project Sylvanas|\bPS (logs?|strip|overlay)/i, what: 'PVPVCR / PS material' },
   { re: /LiveHud|LIVE HUD/, what: 'the abandoned Live HUD experiment' },
   { re: /WantCoffee\.ttf|WantBanzai\.otf|Changchangwoodcut|TheRootsOfChina|Odishi-ALV7/, what: 'a font file that is not shipped', allow: (f) => /FONT-NOTICES\.txt$|\/docs\//.test(f) }, // the notice says which faces are NOT shipped
@@ -106,11 +118,17 @@ function scan(files, read) {
     if (!TEXT.test(rel)) continue;
     const text = read(rel).toString('utf8');
     for (const p of PATTERNS) {
-      const m = text.match(p.re);
-      if (!m) continue;
-      const line = text.slice(0, m.index).split('\n').length;
-      const rec = { file: rel, line, what: p.what, sample: m[0].slice(0, 60) };
-      if (p.allow && p.allow(rel)) allowed.push(rec); else hits.push(rec);
+      // 1.5.0: every occurrence is judged (not only the first), and an allowance may look at the line itself
+      const every = new RegExp(p.re.source, p.re.flags.replace('g', '') + 'g' + (p.re.flags.includes('m') ? '' : 'm'));
+      const lines = text.split('\n');
+      const seen = new Set();
+      for (const m of text.matchAll(every)) {
+        const line = text.slice(0, m.index).split('\n').length;
+        if (seen.has(line)) continue;
+        seen.add(line);
+        const rec = { file: rel, line, what: p.what, sample: m[0].slice(0, 60) };
+        if (p.allow && p.allow(rel, lines[line - 1])) allowed.push(rec); else hits.push(rec);
+      }
     }
   }
   return { hits, allowed };
@@ -145,8 +163,8 @@ function main() {
   // the user documentation rides inside the settings addon
   if (fs.existsSync(DOCS_DIR)) {
     for (const rel of walk(DOCS_DIR)) entries.push({ name: `BushidoPrivateRestore/docs/${rel}`, data: fs.readFileSync(path.join(DOCS_DIR, rel)) });
-    console.log(`documentation: ${walk(DOCS_DIR).length} files from docs/release`);
-  } else console.log('documentation: docs/release absent - none packaged');
+    console.log(`documentation: ${walk(DOCS_DIR).length} files from docs/banzai-ui`);
+  } else throw new Error('docs/banzai-ui is missing: the package carries its documentation');
   entries.sort((a, b) => (a.name < b.name ? -1 : 1));
 
   // the scan, on exactly what the package will contain
@@ -169,10 +187,18 @@ function main() {
   fs.rmSync(again, { force: true });
   if (!same) throw new Error('the package is not deterministic (two writes differ)');
 
+  // the clients: both TOCs must name the same interfaces; release.json says so to WowUp's GitHub provider
+  const interfaces = ADDONS.map((a) => (fs.readFileSync(path.join(DIST, a, a + '.toc'), 'utf8').match(/^## Interface:\s*(.+)$/m) || [])[1] || '')
+    .map((line) => line.split(',').map((x) => Number(x.trim())).filter(Boolean).sort((x, y) => x - y));
+  if (JSON.stringify(interfaces[0]) !== JSON.stringify(interfaces[1]) || !interfaces[0].length) throw new Error('the two TOCs do not name the same interfaces: ' + JSON.stringify(interfaces));
+  const metadata = interfaces[0].map((n) => ({ flavor: FLAVOR(n), interface: n })).sort((a, b) => (a.flavor < b.flavor ? 1 : -1));
+  const releaseJson = { releases: [{ name: 'BANZAI UI', version, filename: path.basename(zip), nolib: false, metadata }] };
+  fs.writeFileSync(path.join(RELEASE_DIR, 'release.json'), JSON.stringify(releaseJson, null, 2) + '\n');
+
   const record = {
     product: 'BANZAI UI', version, addons: ADDONS, dependenciesNotPackaged: ['ElvUI', 'JiberishMedia'],
     package: path.relative(ROOT, zip).replace(/\\/g, '/'), sha256: hash, bytes: fs.statSync(zip).size, files: entries.length, deterministic: true,
-    scan: { clean: hits.length === 0, allowed }, at: new Date().toISOString(),
+    clients: metadata, scan: { clean: hits.length === 0, allowed }, at: new Date().toISOString(),
   };
   fs.writeFileSync(path.join(RELEASE_DIR, `release-audit-${version}.json`), JSON.stringify(record, null, 1) + '\n');
   console.log(`package: ${path.relative(ROOT, zip)} (${record.bytes} bytes, ${entries.length} files, deterministic) SHA-256 ${hash}`);
@@ -181,4 +207,4 @@ function main() {
 if (require.main === module) {
   try { main(); } catch (e) { console.error('RELEASE STOPPED: ' + e.message); process.exit(1); }
 }
-module.exports = { scan, writeZip, PATTERNS, FORBIDDEN_FILES };
+module.exports = { scan, writeZip, PATTERNS, FORBIDDEN_FILES, FLAVOR };

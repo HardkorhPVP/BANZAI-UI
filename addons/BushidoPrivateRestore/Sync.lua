@@ -58,7 +58,7 @@ ns.Sync = Sync
 _G.BanzaiSync = Sync
 
 -- the Banzai configuration a master hands on: its shape (1: up to 1.0.0; 2: 1.0.1 identity / schema / backup records)
-Sync.SCHEMA = 2
+Sync.SCHEMA = 3
 
 Sync.STATES = {
 	MASTER = 'BANZAI MASTER',
@@ -194,10 +194,20 @@ function Sync:Config()
 	local art = Art()
 	local own = ns.Restore:Own(self.Key()) -- this character's fonts and unit layout (1.0.1)
 	return {
+		flavor = ns.Flavor and ns.Flavor.Id() or 'RETAIL',
 		settings = WithoutOwn(art and art.Export and art:Export()),
 		fonts = { display = own.fonts.display, small = own.fonts.small },
 		layout = { buffScale = own.layout.buffScale, unitHeight = own.layout.unitHeight, unitSpread = own.layout.unitSpread },
 	}
+end
+
+function Sync:ConfigCompatibility(config)
+	if type(config) ~= 'table' then return false, 'the master has no configuration to preview or apply' end
+	local source = config.flavor
+	local target = ns.Flavor and ns.Flavor.Id() or 'RETAIL'
+	if source == nil then return false, 'the master configuration has no client flavor; recapture it on the master first' end
+	if source ~= target then return false, 'client flavor mismatch (' .. tostring(source) .. ' -> ' .. tostring(target) .. ')' end
+	return true
 end
 
 -- the highest configuration revision any master has published: a master set
@@ -291,6 +301,38 @@ function Sync:StatusText()
 	return text
 end
 
+function Sync:Preview()
+	local master = self:Master()
+	local config = master and master.config
+	local compatible, reason = true, nil
+	if master and master.key ~= self.Key() then compatible, reason = self:ConfigCompatibility(config) end
+	local applied, skipped = 0, 0
+	if type(config) == 'table' then
+		for _ in pairs(type(config.settings) == 'table' and config.settings or {}) do applied = applied + 1 end
+		for _ in pairs(type(config.fonts) == 'table' and config.fonts or {}) do applied = applied + 1 end
+		for _ in pairs(type(config.layout) == 'table' and config.layout or {}) do applied = applied + 1 end
+	end
+	for _, component in ipairs(self:Diagnostics()) do
+		if not component.required and component.state ~= 'READY' then skipped = skipped + 1 end
+	end
+	local clientState = DB().client
+	local report = type(clientState) == 'table' and clientState.report
+	local role = ns.Roles and ns.Roles.Detection and ns.Roles:Detection()
+	return {
+		client = ns.Flavor and ns.Flavor.Id() or 'RETAIL',
+		master = master and master.key or nil,
+		source = config and config.flavor or (master and 'UNKNOWN' or 'NONE'),
+		compatible = compatible,
+		blocked = not compatible and reason or nil,
+		applied = compatible and applied or 0,
+		adapted = compatible and #(type(report) == 'table' and report.changes or {}) or 0,
+		skipped = skipped,
+		role = role and role.layout or (ns.Roles and ns.Roles.Current()) or 'DPS',
+		roleSource = role and role.reason or 'local layout',
+		preserved = { 'role override', 'tracked cooldowns', 'action assignments', 'keybindings', 'talents', 'equipment' },
+	}
+end
+
 -- the pre-Banzai backup is in place for this character (taken by APPLY BANZAI first)
 function Sync:BackupReady(key)
 	local record = Record(key)
@@ -301,17 +343,25 @@ end
 function Sync:Plan()
 	local who = self:Identity()
 	local lines = { 'BANZAI WILL APPLY:' }
+	local preview = self:Preview()
+	lines[#lines + 1] = '- client: ' .. tostring(preview.client) .. '; master flavor: ' .. tostring(preview.source)
+	lines[#lines + 1] = '- settings planned: ' .. tostring(preview.applied) .. '; adapted: ' .. tostring(preview.adapted) .. '; skipped: ' .. tostring(preview.skipped)
+	lines[#lines + 1] = '- local role/layout: ' .. tostring(preview.role) .. ' (' .. tostring(preview.roleSource) .. ')'
+	if preview.blocked then lines[#lines + 1] = '- BLOCKED: ' .. preview.blocked end
 	for _, item in ipairs(self.APPLIES) do
 		if item == 'role layout' then item = item .. ' (' .. who.role .. ' for ' .. tostring(who.spec or 'this spec') .. ')' end
 		lines[#lines + 1] = '- ' .. item
 	end
 	lines[#lines + 1] = 'BANZAI WILL NOT CHANGE:'
 	for _, item in ipairs(self.NEVER) do lines[#lines + 1] = '- ' .. item end
+	lines[#lines + 1] = '- preserved local settings: ' .. table.concat(preview.preserved, ', ')
 	return lines
 end
 
 -- this character takes the master's configuration (Banzai-owned settings only)
 function Sync:Receive(config)
+	local compatible, reason = self:ConfigCompatibility(config)
+	if not compatible then return false, reason end
 	local art = Art()
 	local own = ns.Restore:Own(self.Key())
 	if art and art.Import and config.settings then art:Import(WithoutOwn(config.settings)) end -- (a master captured before 1.0.1 may still carry them)
@@ -319,6 +369,7 @@ function Sync:Receive(config)
 	if config.layout then
 		for k, v in pairs(config.layout) do own.layout[k] = v end
 	end
+	return true
 end
 
 -- this character's own BANZAI settings, fonts and unit layout, before a master's replace them
@@ -379,12 +430,25 @@ function Sync:Apply()
 	if record and record.applied then return self:Update() end -- already on Banzai: same as UPDATE (idempotent)
 	local blocked = self:Blocked()
 	if blocked then return Fail(key, blocked .. ': Banzai was NOT applied.') end
+	local master = self:Master()
+	if master and master.key ~= key then
+		local compatible, reason = self:ConfigCompatibility(master.config)
+		if not compatible then return Fail(key, reason .. ': Banzai was NOT applied.') end
+	end
+	-- 1.5.0-dev1 (WoW Forever): the prerequisites are asked before anything is recorded, so an apply that
+	-- cannot go ahead leaves no pre-Banzai snapshot behind for a later one to reuse
+	if ns.Flavor and ns.Flavor.IsForever() and ns.Restore.Preflight then
+		local pre = ns.Restore:Preflight()
+		if pre.blocked then return Fail(key, 'Banzai was NOT applied: ' .. pre.blocked .. '. /banzai forever shows every component.') end
+	end
 	local backed, why = self:Backup(key)
 	if not backed then return Fail(key, 'PRE-BANZAI BACKUP FAILED (' .. tostring(why) .. '): Banzai was NOT applied.') end
 	record = Record(key)
-	local master = self:Master()
 	local ran, ok = pcall(function()
-		if master and master.config and master.key ~= key then self:Receive(master.config) end
+		if master and master.key ~= key then
+			local received, reason = self:Receive(master.config)
+			if not received then error(reason, 0) end
+		end
 		return ns.Restore:Apply('character sync', { reuse = true })
 	end)
 	if not (ran and ok) then
@@ -411,11 +475,16 @@ function Sync:Update()
 	local blocked = self:Blocked()
 	if blocked then return Fail(key, blocked .. ': nothing was updated.') end
 	local master = self:Master()
+	if master and master.key ~= key then
+		local compatible, reason = self:ConfigCompatibility(master.config)
+		if not compatible then return Fail(key, reason .. ': nothing was updated.') end
+	end
 	local R = ns.Restore
 	if master and master.config and master.key ~= key then
 		-- a character on Banzai from before Character Sync: its own setup saved first (RESTORE PRE-BANZAI)
 		if not (record.syncBackup and type(record.syncBackup.settings) == 'table') then record.syncBackup = OwnBackup(key) end
-		self:Receive(master.config)
+		local received, reason = self:Receive(master.config)
+		if not received then return Fail(key, reason .. ': nothing was updated.') end
 	end
 	local reload = R:CharacterLayer(key)
 	-- the tracker choice came with the settings: Kaliel's Tracker follows it

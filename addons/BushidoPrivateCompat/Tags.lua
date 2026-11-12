@@ -71,6 +71,12 @@ local function Call(fn, ...)
 end
 
 function Tags.PlayerSpec()
+	-- 1.5.0-dev1 (WoW Forever): the leading talent tree's name (Flavor.lua); Retail: the chosen specialization
+	local Flavor = ns.Flavor
+	if Flavor and Flavor.IsForever() then
+		local spec = Flavor.PlayerSpec()
+		return spec and spec.name or nil
+	end
 	local index = GetSpecialization and Plain(GetSpecialization())
 	if not index or not GetSpecializationInfo then return nil end
 	local _, name = GetSpecializationInfo(index)
@@ -95,6 +101,9 @@ end
 -- ask the game for a targeted / focused player's inspect data (supported API,
 -- throttled, never in combat or over the open inspect window)
 function Tags.RequestInspect(unit)
+	-- 1.5.0-dev1 (WoW Forever): the inspect "specialization" there is a starter ID, not the player's talent
+	-- tree - nothing is asked for and nothing is shown for other players
+	if ns.Flavor and not ns.Flavor.Has('inspectSpecialization') then return false end
 	if not (NotifyInspect and CanInspect) or InCombatLockdown() then return false end
 	if _G.InspectFrame and _G.InspectFrame.IsShown and _G.InspectFrame:IsShown() then return false end
 	if not IsOtherPlayer(unit) then return false end
@@ -133,7 +142,7 @@ function Tags.Spec(unit)
 	local spec
 	if IsPlayerUnit(unit) then
 		spec = Tags.PlayerSpec()
-	elseif IsOtherPlayer(unit) then
+	elseif IsOtherPlayer(unit) and not (ns.Flavor and not ns.Flavor.Has('inspectSpecialization')) then -- 1.5.0-dev1: not on WoW Forever (see RequestInspect)
 		spec = Tags.InspectedSpec(unit)
 		if not spec then
 			local E = Engine()
@@ -247,4 +256,6 @@ for _, event in ipairs({ 'PLAYER_ENTERING_WORLD', 'PLAYER_SPECIALIZATION_CHANGED
 	pcall(updater.RegisterEvent, updater, event)
 end
 updater:SetScript('OnEvent', function(_, event, arg1) Tags.OnEvent(event, arg1) end)
+-- 1.5.0-dev1 (WoW Forever): the identity line names the leading talent tree - it follows the talents
+if ns.Flavor and ns.Flavor.IsForever() then pcall(updater.RegisterEvent, updater, 'TRAIT_CONFIG_UPDATED') end
 Tags.updater = updater

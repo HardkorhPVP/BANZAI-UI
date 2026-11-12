@@ -151,6 +151,16 @@ end
 function Identity.SpecOf(unit, arenaIndex)
 	if type(unit) ~= 'string' then return nil end
 	if unit == 'player' or Call(UnitIsUnit, unit, 'player') == true then
+		-- 1.5.0-dev1 (WoW Forever): no chosen specialization there. Jiberish Icons reads the player's leading
+		-- talent tree itself and names it with the ID its own Fabled sheet uses; without it, the class icon.
+		if ns.Flavor and ns.Flavor.IsForever() then
+			local JI = Jiberish()
+			if JI and JI.GetUnitSpecialization then
+				local id = Call(JI.GetUnitSpecialization, JI, 'player')
+				if type(id) == 'number' and id > 0 then return id end
+			end
+			return nil
+		end
 		local index = Call(GetSpecialization)
 		if type(index) == 'number' and index > 0 then
 			local id = Call(GetSpecializationInfo, index)
@@ -158,6 +168,9 @@ function Identity.SpecOf(unit, arenaIndex)
 		end
 		return nil
 	end
+	-- 1.5.0-dev1 (WoW Forever): no spec for other players. The game's arena / inspect "specialization" is a
+	-- starter ID there, and Banzai sends no inspect of its own: every other unit shows its class icon.
+	if ns.Flavor and ns.Flavor.IsForever() then return nil end
 	if arenaIndex and GetArenaOpponentSpec then
 		local id = Call(GetArenaOpponentSpec, arenaIndex)
 		if type(id) == 'number' and id > 0 then return id end
@@ -522,6 +535,7 @@ end
 -- arena preparation: the opponent is not a unit yet, but the game may already
 -- name its spec (12.1.5 keeps it secret: then there is nothing to show)
 function Identity.PrepClass(index)
+	if ns.Flavor and ns.Flavor.IsForever() then return nil end -- 1.5.0-dev1: a starter ID there, not a spec (arenas are the next milestone)
 	if not (GetArenaOpponentSpec and GetSpecializationInfoByID) then return nil end
 	local ok, specID = pcall(GetArenaOpponentSpec, index)
 	specID = ok and Plain(specID) or nil

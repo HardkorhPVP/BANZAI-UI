@@ -27,6 +27,10 @@ The tracked spells are class abilities: they belong to each character and are **
 
 Sample frames and bars labelled *SAMPLE DATA*, with synthetic states: a role selector, a state selector, **NEXT STATE**, **PARTY + ARENA**, **RAID**, **COOLDOWN BARS**, **HIDE ALL**. Hidden automatically in combat.
 
+## WoW Forever
+
+PvP presentation is implemented where WoW Forever supports it and validated offline; dedicated live PvP / Arena / Battleground validation is deferred. What that client has no data for is left out rather than shown as a made-up value: no conquest, no separate PvP item level, arena trinket state shown as unknown. Your own cooldown bars show nothing there yet (no spell list is verified for that client; Retail's is not reused). See [WOW-FOREVER.md](WOW-FOREVER.md).
+
 ## Not changed
 
 Which spells you have, their keybinds, the arena frames' secure behaviour, and any sArena or other arena addon - BANZAI's arena enemy frames are ElvUI's arena frames in the Banzai design.

@@ -76,10 +76,10 @@ end
 Bar.ITEMS = {
 	left = {
 		{ key = 'honor', label = 'HONOR', color = { 1.00, 0.42, 0.30 }, value = function() return Currency(HONOR_ID) end, click = function() Call('TogglePVPUI') end },
-		{ key = 'conquest', label = 'CONQUEST', color = { 1.00, 0.72, 0.22 }, value = function() return Currency(CONQUEST_ID) end, click = function() Call('TogglePVPUI') end },
-		{ key = 'mastery', label = 'MASTERY', color = { 0.72, 0.48, 1.00 }, value = function() return Percent(GetMasteryEffect and GetMasteryEffect()) end, click = function() Call('ToggleCharacter', 'PaperDollFrame') end },
+		{ key = 'conquest', needs = 'conquest', label = 'CONQUEST', color = { 1.00, 0.72, 0.22 }, value = function() return Currency(CONQUEST_ID) end, click = function() Call('TogglePVPUI') end },
+		{ key = 'mastery', needs = 'mastery', label = 'MASTERY', color = { 0.72, 0.48, 1.00 }, value = function() return Percent(GetMasteryEffect and GetMasteryEffect()) end, click = function() Call('ToggleCharacter', 'PaperDollFrame') end },
 		{ key = 'haste', label = 'HASTE', color = { 0.20, 0.92, 0.85 }, value = function() return Percent(GetHaste and GetHaste()) end, click = function() Call('ToggleCharacter', 'PaperDollFrame') end },
-		{ key = 'versatility', label = 'VERSATILITY', color = { 0.58, 1.00, 0.32 }, value = function()
+		{ key = 'versatility', needs = 'versatility', label = 'VERSATILITY', color = { 0.58, 1.00, 0.32 }, value = function()
 			local id = CR_VERSATILITY_DAMAGE_DONE or 29
 			local a = GetCombatRatingBonus and Safe(GetCombatRatingBonus(id)) or 0
 			local b = GetVersatilityBonus and Safe(GetVersatilityBonus(id)) or 0
@@ -120,6 +120,13 @@ Bar.ITEMS = {
 	right = {
 		{ key = 'spec', label = 'SPEC', color = { 1, 1, 1 }, value = function(item)
 			item.dynamic = Theme:PlayerClassColor()
+			-- 1.5.0-dev1 (WoW Forever): the leading talent tree, its name and icon the game's own (Flavor.lua)
+			local Flavor = ns.Flavor
+			if Flavor and Flavor.IsForever() then
+				local spec = Flavor.PlayerSpec()
+				if not spec then return '-' end
+				return (spec.icon and ('|T' .. spec.icon .. ':12:12:0:0:64:64:5:59:5:59|t ') or '') .. string.upper(spec.name)
+			end
 			local index = GetSpecialization and GetSpecialization()
 			if not index then return '-' end
 			local _, name, _, icon = GetSpecializationInfo(index)
@@ -133,7 +140,8 @@ Bar.ITEMS = {
 			equipped, pvp = Safe(equipped), Safe(pvp)
 			if not equipped then return '-' end
 			local text = 'PVE ' .. math.floor(equipped)
-			if pvp and pvp > 0 then text = text .. '  ' .. Hex({ 1.00, 0.55, 0.40 }) .. 'PVP ' .. math.floor(pvp) .. '|r' end
+			local Flavor = ns.Flavor
+			if (not Flavor or Flavor.Has('pvpItemLevel')) and pvp and pvp > 0 then text = text .. '  ' .. Hex({ 1.00, 0.55, 0.40 }) .. 'PVP ' .. math.floor(pvp) .. '|r' end
 			return text
 		end, click = function() Call('ToggleCharacter', 'PaperDollFrame') end },
 		{ key = 'professions', label = 'PROFESSIONS', color = { 0.96, 0.86, 0.56 }, value = function()
@@ -204,6 +212,13 @@ local function ItemWidth(item)
 	return math.ceil(w)
 end
 
+-- 1.5.0-dev1: an entry whose data this client's game does not have is left out (WoW Forever: no conquest, mastery
+-- or versatility) instead of showing a made-up zero; on Retail every entry shows, in the same order as before
+function Bar.Shown(def)
+	local Flavor = ns.Flavor
+	return not (def.needs and Flavor and not Flavor.Has(def.needs))
+end
+
 function Bar:Build()
 	if self.frame then return self.frame end
 	local f = CreateFrame('Frame', 'BanzaiInfoBar', UIParent)
@@ -230,10 +245,14 @@ function Bar:Build()
 
 	f.items = {}
 	for group, defs in pairs(self.ITEMS) do
-		for index, def in ipairs(defs) do
-			local item = NewItem(f, def, group == 'center')
-			item.group, item.index = group, index
-			f.items[#f.items + 1] = item
+		local index = 0
+		for _, def in ipairs(defs) do
+			if Bar.Shown(def) then
+				index = index + 1
+				local item = NewItem(f, def, group == 'center')
+				item.group, item.index = group, index
+				f.items[#f.items + 1] = item
+			end
 		end
 	end
 	self.frame = f
@@ -244,6 +263,10 @@ function Bar:Build()
 		'UPDATE_INVENTORY_DURABILITY', 'PLAYER_SPECIALIZATION_CHANGED', 'PLAYER_EQUIPMENT_CHANGED', 'PLAYER_AVG_ITEM_LEVEL_UPDATE',
 		'SKILL_LINES_CHANGED', 'FRIENDLIST_UPDATE', 'BN_FRIEND_ACCOUNT_ONLINE', 'BN_FRIEND_ACCOUNT_OFFLINE', 'GUILD_ROSTER_UPDATE', 'PLAYER_MONEY' }) do
 		pcall(f.RegisterEvent, f, event)
+	end
+	-- 1.5.0-dev1 (WoW Forever): the SPEC entry is the leading talent tree - it follows the talents
+	if ns.Flavor and ns.Flavor.IsForever() then
+		for _, event in ipairs({ 'TRAIT_CONFIG_UPDATED', 'PLAYER_TALENT_UPDATE' }) do pcall(f.RegisterEvent, f, event) end
 	end
 	f:SetScript('OnEvent', function() Bar:Update() end)
 	self:Layout()

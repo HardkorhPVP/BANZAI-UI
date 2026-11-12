@@ -12,7 +12,7 @@ const strip0 = (code) => code.replace(/--\[\[[\s\S]*?\]\]/g, '').replace(/--[^\n
 
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
-const BACKUP_ROOT = 'C:\\Users\\DarrenSteinke\\Desktop\\Bushido-Private-Restoration-Backups';
+const BACKUP_ROOT = require('./lib/local').RETAIL_BACKUPS;
 const ADDONS = 'D:\\Program Files (x86)\\World of Warcraft\\_retail_\\Interface\\AddOns';
 const CLIENT_INTERFACE = 120105;
 
@@ -123,9 +123,9 @@ const registered = [...mediaLua.matchAll(/\[\[Interface\\Addons\\JiberishMedia\\
 const missingMedia = registered.filter((rel) => !fs.existsSync(path.join(DIST, 'JiberishMedia', rel.replace(/\\/g, path.sep))));
 check('JiberishMedia: all LibSharedMedia paths exist', missingMedia.length === 0, `${registered.length} registered${missingMedia.length ? ', missing ' + missingMedia.join(', ') : ''}`);
 check('JiberishMedia: GasoekOne (Lixdu stand-in) registered', /"GasoekOne"/.test(mediaLua));
-const srcFiles = files(path.join('C:\\Users\\DarrenSteinke\\Desktop\\HARDKORHUI-Bushido-Assessment\\JiberishMedia\\JiberishMedia'));
+const srcFiles = files(path.join(require('./lib/local').REFERENCES, 'JiberishMedia', 'JiberishMedia'));
 const sameAsSource = srcFiles.every((f) => {
-  const rel = path.relative('C:\\Users\\DarrenSteinke\\Desktop\\HARDKORHUI-Bushido-Assessment\\JiberishMedia\\JiberishMedia', f);
+  const rel = path.relative(path.join(require('./lib/local').REFERENCES, 'JiberishMedia', 'JiberishMedia'), f);
   const d = path.join(DIST, 'JiberishMedia', rel);
   return fs.existsSync(d) && fs.readFileSync(d).equals(fs.readFileSync(f));
 });

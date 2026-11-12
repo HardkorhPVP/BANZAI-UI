@@ -150,9 +150,13 @@ local Restore = {}
 ns.Restore = Restore
 
 local NAME = 'BANZAI'
-local VERSION = '1.4.0'
+local VERSION = '1.5.0'
+-- A "-dev" version is a private proof build, never a release; every proof build has its own version.
+local CHANNEL = string.find(VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 ns.VERSION = VERSION
+ns.CHANNEL = CHANNEL
 ns.NAME = NAME
+local Flavor = ns.Flavor -- 1.5.0-dev1: the client (Retail / WoW Forever), shared with Banzai Art
 
 -- Applies automatically for the characters listed here at their first login (empty in the public release:
 -- every character applies from HOME > APPLY BANZAI, /banzai apply or Character Sync).
@@ -355,13 +359,21 @@ function Restore:LayoutDetails(geometryOnly)
 		if window.SaveMainWindowPosition then window:SaveMainWindowPosition() end
 		if window.ReajustaGump then pcall(window.ReajustaGump, window) end
 	end
-	place(right, L.right)
-	place(left, L.right - L.width - L.gap)
+	local placeAfterDisplay = Flavor and Flavor.IsForever()
+	if not placeAfterDisplay then
+		place(right, L.right)
+		place(left, L.right - L.width - L.gap)
+	end
 	if not geometryOnly then
 		local segment = left.GetSegment and left:GetSegment()
 		if left.SetDisplay then pcall(left.SetDisplay, left, segment, 1, 1) end -- damage done
 		segment = right.GetSegment and right:GetSegment()
 		if right.SetDisplay then pcall(right.SetDisplay, right, segment, 2, 1) end -- healing done
+	end
+	-- SetDisplay can reflow Details' Forever window after its display changes.
+	if placeAfterDisplay then
+		place(right, L.right)
+		place(left, L.right - L.width - L.gap)
 	end
 	if _G.BanzaiCompat and _G.BanzaiCompat.PlaceDetails then
 		_G.BanzaiCompat:PlaceDetails(_G.BanzaiCompat.Active and _G.BanzaiCompat.Active())
@@ -417,6 +429,9 @@ function Restore:PlaceMinimapButton(record)
 	local options = _G.MinimapButtonButtonOptions
 	local position = type(options) == 'table' and options.position
 	if type(position) ~= 'table' then return 'not installed' end
+	-- 1.5.0-dev3 (WoW Forever): the minimap-button addon owns its buttons and where they sit; BANZAI owns the
+	-- minimap frame only. Nothing of its saved position is written there (Retail: as 1.4.0 placed it).
+	if Flavor and Flavor.IsForever() then return 'left to MinimapButtonButton' end
 	if position[1] ~= 'TOPRIGHT' or position[3] ~= 'TOPRIGHT' then return 'unchanged (not anchored top-right)' end
 	local scale = (tonumber(options.scale) or 10) / 10
 	record.previous.minimapButton = record.previous.minimapButton or {}
@@ -651,12 +666,240 @@ function Restore:CharacterLayer(key, force)
 	local owner = db.layerOwner
 	if not force and owner and owner.key == key and owner.signature == signature then return false end
 	T.ApplyCharacterLayer(profile, P.elvuiProfile, fonts, opts)
+	self:AdaptClient('character layer') -- 1.5.0-dev1: whatever this write brought back stays adapted to the client (Retail: nothing)
 	local private = _G.ElvPrivateDB and _G.ElvPrivateDB.profiles and _G.ElvPrivateDB.profiles[T.PROFILE]
 	if type(private) == 'table' and type(P.elvuiPrivate) == 'table' then T.ApplyBanzaiPrivate(private, P.elvuiPrivate, fonts) end
 	if ns.Roles then ns.Roles:Written(opts.role, T.RoleWritten(T.RoleLayout(opts.role, P.elvuiProfile, opts.roles), opts.roleContext), opts.roleContext) end
 	local changed = not (owner and owner.signature == signature)
 	db.layerOwner = { key = key, signature = signature }
 	return changed
+end
+
+---------------------------------------------------------------------------
+-- 1.5.0-dev1: the client (Retail / WoW Forever)
+---------------------------------------------------------------------------
+-- Which of the names a profile uses the running client has registered (asked once, at APPLY BANZAI, when
+-- every addon is loaded): { datatexts = { [name] = bool }, tags = { [name] = bool } }. A list the client
+-- cannot give is left empty (nothing is reported about it).
+function Restore:ProbeNames(profile)
+	local names = T.ProfileNames(profile)
+	local known = { datatexts = {}, tags = {} }
+	local E = Engine()
+	local DT = E and E.GetModule and E:GetModule('DataTexts', true)
+	local registered = DT and DT.RegisteredDataTexts
+	if type(registered) == 'table' then
+		for _, name in ipairs(names.datatexts) do known.datatexts[name] = registered[name] ~= nil end
+	end
+	local methods = E and E.oUF and E.oUF.Tags and E.oUF.Tags.Methods
+	if type(methods) == 'table' then
+		for _, name in ipairs(names.tags) do
+			local ok, method = pcall(function() return methods[name] end)
+			known.tags[name] = ok and method ~= nil
+		end
+	end
+	return known
+end
+
+-- The shared Banzai profile adapted to the running client (Transform T.AdaptProfile): on WoW Forever the
+-- macro conditions it does not have leave the bar visibility; on Retail nothing is done (no rules). `probe`
+-- (APPLY BANZAI) asks the client which datatexts / tags it knows and starts a new report; every other call
+-- reuses that answer. A failure here never stops Banzai: the profile is then left as it was written.
+function Restore:AdaptClient(reason, probe)
+	local flavor = Flavor and Flavor.Id() or 'RETAIL'
+	if not T.CLIENTS[flavor] then return nil end
+	local profile = _G.ElvDB and _G.ElvDB.profiles and _G.ElvDB.profiles[T.PROFILE]
+	if type(profile) ~= 'table' then return nil end
+	local db = DB()
+	db.client = type(db.client) == 'table' and db.client or {}
+	local state = db.client
+	if probe then
+		local ok, known = pcall(self.ProbeNames, self, profile)
+		state.known = ok and known or nil
+	end
+	local ok, report = pcall(T.AdaptProfile, profile, flavor, state.known)
+	if not ok then
+		state.error = { text = tostring(report), reason = reason, time = date('%Y-%m-%d %H:%M:%S') }
+		return nil
+	end
+	state.error = nil
+	if probe or type(state.report) ~= 'table' then
+		-- (a profile adapted earlier and applied again has nothing left to adapt: what was adapted when it was written stays on record)
+		local earlier = type(state.report) == 'table' and state.report.flavor == flavor and state.report.changes
+		local changes = (#report.changes == 0 and type(earlier) == 'table') and earlier or report.changes
+		state.report = { flavor = flavor, client = Flavor.ClientText(), version = VERSION, reason = reason, time = date('%Y-%m-%d %H:%M:%S'), changes = changes, notes = report.notes }
+	elseif #report.changes > 0 then
+		-- a later write brought a Retail-only value back: adapted again, added to the report
+		if type(state.report.changes) ~= 'table' then state.report.changes = {} end
+		for _, change in ipairs(report.changes) do table.insert(state.report.changes, change) end
+		state.report.updated = date('%Y-%m-%d %H:%M:%S')
+	end
+	return report
+end
+
+-- What Banzai needs installed, and what it uses when it is there. Each entry is checked against what Banzai
+-- really calls or names (read from the installed addons, docs/FOREVER-PROOF-1.md) - a version number alone
+-- proves nothing. `check` returns nil when ready, else what is missing.
+local function LoadedTag(name)
+	local E = Engine()
+	local methods = E and E.oUF and E.oUF.Tags and E.oUF.Tags.Methods
+	if type(methods) ~= 'table' then return false end
+	local ok, method = pcall(function() return methods[name] end)
+	return ok and method ~= nil
+end
+
+local function MediaValid(kind, name)
+	local media = LSM()
+	return media and media:IsValid(kind, name) or false
+end
+
+Restore.PREREQUISITES = {
+	{ name = 'ElvUI', folder = 'ElvUI', required = true, check = function()
+		local E = Engine()
+		if not E then return 'the ElvUI engine is not there' end
+		local missing = {}
+		if not (E.data and E.data.GetCurrentProfile and E.data.SetProfile) then missing[#missing + 1] = 'profile database' end
+		if not (_G.ElvDB and _G.ElvPrivateDB) then missing[#missing + 1] = 'saved settings' end
+		if not E.mynameRealm then missing[#missing + 1] = 'character key' end
+		if not (E.GetModule and E:GetModule('UnitFrames', true)) then missing[#missing + 1] = 'UnitFrames module' end
+		if not (E.oUF and E.oUF.Tags and E.oUF.Tags.Methods) then missing[#missing + 1] = 'tag system' end
+		return #missing > 0 and table.concat(missing, ', ') or nil
+	end },
+	{ name = 'ElvUI Libraries', folder = 'ElvUI_Libraries', required = true, check = function()
+		if not LSM() then return 'LibSharedMedia-3.0' end
+		if not (_G.LibStub and _G.LibStub('LibElvUIPlugin-1.0', true)) then return 'LibElvUIPlugin-1.0' end
+	end },
+	{ name = 'ElvUI Options', folder = 'ElvUI_Options', required = true, onDemand = true },
+	{ name = 'Banzai Art', folder = 'BushidoPrivateCompat', required = true, check = function()
+		local art = _G.BanzaiCompat
+		if not (art and art.Export and art.Import) then return 'Banzai Art did not start' end
+	end },
+	{ name = 'JiberishMedia', folder = 'JiberishMedia', required = true, check = function()
+		local missing = {}
+		for _, font in ipairs({ T.FONT, T.SMALL_FONT }) do
+			if not MediaValid('font', font) then missing[#missing + 1] = 'font ' .. font end
+		end
+		return #missing > 0 and table.concat(missing, ', ') or nil
+	end },
+	{ name = 'mMediaTag & Tools', folder = 'ElvUI_mMediaTag', uses = 'health value text, portraits, cast ring', check = function()
+		if not LoadedTag('mMT-health:current:short') then return 'tag [mMT-health:current:short]' end
+	end },
+	{ name = 'Eltruism', folder = 'ElvUI_EltreumUI', uses = 'name gradient, Bushido bar textures, nameplate extras', check = function()
+		local missing = {}
+		if not LoadedTag('name:eltruism:gradientshortcaps') then missing[#missing + 1] = 'tag [name:eltruism:gradientshortcaps]' end
+		if not MediaValid('statusbar', STATUSBARS[1]) then missing[#missing + 1] = 'texture ' .. STATUSBARS[1] end
+		return #missing > 0 and table.concat(missing, ', ') or nil
+	end },
+	{ name = 'Jiberish Icons', folder = 'JiberishIcons', uses = 'Fabled class / spec art', check = function()
+		local addon = _G.JiberishIcons
+		local JI = type(addon) == 'table' and addon[1]
+		if not (type(JI) == 'table' and JI.GetIdentityIcon) then return 'GetIdentityIcon' end
+	end },
+	{ name = 'Details', folder = 'Details', uses = 'DAMAGE / HEALING meters', check = function()
+		local d = _G.Details
+		if type(d) ~= 'table' then return 'the Details object' end
+		local missing = {}
+		for _, member in ipairs({ 'GetProfile', 'ApplyProfile', 'GetCurrentProfileName', 'GetInstance', 'default_profile' }) do
+			if d[member] == nil then missing[#missing + 1] = member end
+		end
+		return #missing > 0 and table.concat(missing, ', ') or nil
+	end },
+	{ name = 'mMT Media Pack', folder = '!mMT_MediaPack', uses = 'two bar textures and one tooltip font (ElvUI\'s own stand in without it)', check = function()
+		local missing = {}
+		if not MediaValid('statusbar', 'mMediaTag S1') then missing[#missing + 1] = 'texture mMediaTag S1' end
+		if not MediaValid('font', 'Montserrat-Bold') then missing[#missing + 1] = 'font Montserrat-Bold' end
+		return #missing > 0 and table.concat(missing, ', ') or nil
+	end },
+}
+
+-- READY | MISSING (required, not loaded) | NOT READY (loaded, something Banzai uses is not there) |
+-- ON DEMAND (ElvUI Options: loads when the settings open) | NOT INSTALLED (optional: Banzai leaves its part out)
+function Restore:Preflight()
+	local out = { client = Flavor and Flavor.ClientText() or 'Retail', flavor = Flavor and Flavor.Id() or 'RETAIL', version = VERSION, channel = CHANNEL, items = {} }
+	local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+	local meta = C_AddOns and C_AddOns.GetAddOnMetadata
+	local info = C_AddOns and C_AddOns.GetAddOnInfo
+	for _, p in ipairs(self.PREREQUISITES) do
+		local item = { name = p.name, folder = p.folder, required = p.required and true or false, uses = p.uses }
+		local okVersion, version = pcall(function() return meta and meta(p.folder, 'Version') end)
+		item.version = okVersion and type(version) == 'string' and version or nil
+		local isLoaded = loaded and loaded(p.folder) and true or false
+		if not isLoaded then
+			local okInfo, reason = pcall(function() return info and select(5, info(p.folder)) end)
+			local installed = okInfo and reason ~= 'MISSING' and info ~= nil
+			if p.onDemand and installed then
+				item.state = 'ON DEMAND'
+			else
+				item.state = p.required and 'MISSING' or 'NOT INSTALLED'
+			end
+		elseif p.check then
+			local ok, problem = pcall(p.check)
+			if not ok then problem = 'check failed: ' .. tostring(problem) end
+			item.state = problem and 'NOT READY' or 'READY'
+			item.detail = problem
+		else
+			item.state = 'READY'
+		end
+		if item.required and (item.state == 'MISSING' or item.state == 'NOT READY') and not out.blocked then
+			out.blocked = item.name .. ' ' .. item.state .. (item.detail and (' (' .. item.detail .. ')') or '')
+		end
+		out.items[#out.items + 1] = item
+	end
+	return out
+end
+
+function Restore:PreflightLines()
+	local pre = self:Preflight()
+	local lines = { format('%s %s (%s) on %s', NAME, VERSION, CHANNEL, pre.client) }
+	for _, item in ipairs(pre.items) do
+		lines[#lines + 1] = format('%s%s: %s%s%s', item.name, item.version and (' ' .. tostring(item.version)) or '', item.state,
+			item.detail and (' - ' .. item.detail) or '', (not item.required and item.uses) and (' [' .. item.uses .. ']') or '')
+	end
+	lines[#lines + 1] = pre.blocked and ('BLOCKED: ' .. pre.blocked .. '. Banzai will not apply.') or 'Every required component is ready.'
+	return lines, pre
+end
+
+-- /banzai forever: the client, the prerequisites and what the client adapter did at the last APPLY BANZAI
+function Restore:ClientReport()
+	local lines = self:PreflightLines()
+	local state = _G.BushidoPrivateRestoreDB and _G.BushidoPrivateRestoreDB.client
+	local report = type(state) == 'table' and state.report
+	if not T.CLIENTS[Flavor and Flavor.Id() or 'RETAIL'] then
+		lines[#lines + 1] = 'client adapter: none needed on this client (the Banzai profile is written as it is).'
+	elseif type(report) ~= 'table' then
+		lines[#lines + 1] = 'client adapter: nothing recorded yet (APPLY BANZAI writes the report).'
+	else
+		lines[#lines + 1] = format('client adapter (%s, %s): %d setting(s) adapted, %d name(s) this client does not register', tostring(report.time), tostring(report.reason), #report.changes, #report.notes)
+		local function shown(text) return (string.gsub(tostring(text), '\n', '\\n')) end -- (a line break inside a setting is shown, not printed)
+		for _, change in ipairs(report.changes) do
+			lines[#lines + 1] = format('  %s: "%s" -> %s  (%s)', change.path, shown(change.from), change.to and ('"' .. shown(change.to) .. '"') or 'left out', tostring(change.reason))
+		end
+		for _, note in ipairs(report.notes) do
+			lines[#lines + 1] = format('  %s: %s - %s', note.path, tostring(note.value), tostring(note.reason))
+		end
+	end
+	if type(state) == 'table' and state.error then lines[#lines + 1] = 'client adapter ERROR (the profile was left as written): ' .. tostring(state.error.text) end
+	-- anything Banzai Art caught while building or refreshing (each module refreshes on its own, so one failure never hides the rest)
+	local art = _G.BanzaiCompat
+	if art and art.lastError then lines[#lines + 1] = 'Banzai Art error (last seen): ' .. tostring(art.lastError) end
+	if art and art.Split and art.Split.lastError then lines[#lines + 1] = 'BANZAI SPLIT paint error (last seen): ' .. tostring(art.Split.lastError) end
+	local spec = Flavor and Flavor.PlayerSpec()
+	if Flavor and Flavor.IsForever() then
+		lines[#lines + 1] = 'talent tree shown as the spec: ' .. (spec and (spec.name .. ' (' .. tostring(spec.points) .. ')') or 'none (a tie, no points spent, or the game did not answer): class only')
+		local role = ns.Roles and ns.Roles.Detection and ns.Roles:Detection()
+		if role then
+			lines[#lines + 1] = 'Forever role detection: ' .. tostring(role.tree or 'no leading tree') .. ' / ' .. tostring(role.class or 'unknown class')
+				.. ' -> ' .. tostring(role.layout) .. ' layout (' .. tostring(role.reason) .. '); override: ' .. tostring(role.override)
+		end
+		local bars = art and art.CooldownBars
+		if bars and bars.MappingReport then lines[#lines + 1] = 'Forever cooldowns: ' .. bars:MappingReport() end
+		local pvp = art and art.PvPFrames
+		if pvp and pvp.CapabilityReport then lines[#lines + 1] = 'Forever PvP: ' .. pvp:CapabilityReport() end
+		lines[#lines + 1] = 'not on WoW Forever, so left out: other players\' spec, conquest, mastery, versatility. Arena trinket data and PvP cooldown mappings remain unverified.'
+		for _, line in ipairs(self:SkinLines()) do lines[#lines + 1] = line end -- 1.5.0-dev3
+		local owner = art and art.MinimapButtonManager and art.MinimapButtonManager()
+		lines[#lines + 1] = 'minimap buttons: ' .. (owner and ('owned by ' .. owner .. ' (BANZAI frames the minimap only)') or 'no dedicated button addon loaded (the dev2 containment of Eltruism\'s bar applies)')
+	end
+	return lines
 end
 
 ---------------------------------------------------------------------------
@@ -722,6 +965,14 @@ function Restore:Apply(reason, options)
 		Print('ElvUI is not ready.')
 		return false
 	end
+	-- 1.5.0-dev1 (WoW Forever): nothing is written unless every required component answers (/banzai forever lists them)
+	if Flavor and Flavor.IsForever() then
+		local pre = self:Preflight()
+		if pre.blocked then
+			Print('Banzai was NOT applied: ' .. pre.blocked .. '. /banzai forever shows every component.')
+			return false
+		end
+	end
 	local P = ns.Payloads
 	local key = E.mynameRealm
 	local db = DB()
@@ -760,6 +1011,10 @@ function Restore:Apply(reason, options)
 		db.splitLayer = opts.splitState
 		db.layerOwner = { key = key, signature = Restore.Signature(opts, fonts) }
 	end
+	-- 3b. 1.5.0-dev1: the profile adapted to this client (WoW Forever: the macro conditions it does not have,
+	-- and a report of the names it does not register); on Retail there are no rules and nothing is touched
+	self:AdaptClient(reason or 'manual', true)
+	pcall(self.ApplyElvUIPanels, self) -- 1.5.0-dev3: a rebuilt profile carries the ELVUI PANELS window skin again when it is on
 
 	-- 4. ElvUI private profile for this character
 	if not (reuse and type(_G.ElvPrivateDB.profiles[T.PROFILE]) == 'table') then
@@ -844,6 +1099,9 @@ function Restore:OnAddonLoaded()
 		self:UpgradeSettings(record, key)
 	elseif record and record.applied and UsesBanzaiProfile(key) then
 		self:CharacterLayer(key) -- this character's settings and role layout, before ElvUI builds
+		-- 1.5.0-dev1: and the profile as this client needs it, whoever wrote it last and on whichever client
+		-- (a profile carried over from Retail, an earlier proof build). Idempotent; on Retail nothing is done.
+		self:AdaptClient('addon loaded')
 	end
 end
 
@@ -937,6 +1195,16 @@ function Restore:Revert()
 
 	record.arenaSystem = nil -- (a 0.9.0 arena-system choice: nothing to put back, sArena is no longer Banzai's business)
 
+	-- 1.5.0-dev3 (WoW Forever): the chat windows BANZAI docked into the General window go back where they were,
+	-- before the profile changes. The window skins need no step: they are BANZAI's own textures, shown only on
+	-- the Banzai profile - the profile switch below hides them and gives every heading its own font back, and
+	-- an addon that rebuilds its windows at the reload rebuilds its own baseline.
+	local art = _G.BanzaiCompat
+	if art and art.ChatLayout and art.ChatLayout.Release then
+		local ok, count = pcall(art.ChatLayout.Release, art.ChatLayout, 'restore')
+		record.chatReleased = ok and count or nil
+	end
+
 	if previous.elvProfile then
 		E.data:SetProfile(previous.elvProfile)
 	end
@@ -987,7 +1255,7 @@ function Restore:Status()
 	local media = LSM()
 	local key = E and E.mynameRealm or '?'
 	local record = DB().characters[key]
-	Print(NAME .. ' ' .. VERSION .. ' (release; profile source ' .. string.sub(tostring(ns.Payloads and ns.Payloads.source), 1, 8) .. ')')
+	Print(NAME .. ' ' .. VERSION .. ' (' .. CHANNEL .. '; ' .. (Flavor and Flavor.ClientText() or 'Retail') .. '; profile source ' .. string.sub(tostring(ns.Payloads and ns.Payloads.source), 1, 8) .. ')')
 	Print('ElvUI profile: ' .. tostring(E and E.data and E.data:GetCurrentProfile()) .. ', applied: ' .. tostring(record and record.applied and record.applied.time or 'no')
 		.. ', Banzai layer: ' .. tostring(record and record.layer or 'no'))
 	Print('frame theme: ' .. Theme())
@@ -1007,7 +1275,8 @@ function Restore:Status()
 		.. ', Blizzard\'s tracker: ' .. (BlizzardTracker() and (BlizzardTracker():GetParent() == PARKED and 'parked while the Banzai tracker shows' or 'shown by the game') or 'not loaded'))
 	local roles = ns.Roles
 	local spec = roles and roles.Spec and roles.Spec()
-	Print('spec role: ' .. tostring(spec and spec.layout or '-') .. ' (' .. tostring(spec and spec.name or '-') .. '), frame layout in use: ' .. tostring(roles and roles:Active() or '-')
+	local roleLabel = Flavor and Flavor.IsForever() and 'talent tree layout' or 'spec role'
+	Print(roleLabel .. ': ' .. tostring(spec and spec.layout or '-') .. ' (' .. tostring(spec and spec.name or '-') .. '), frame layout in use: ' .. tostring(roles and roles:Active() or '-')
 		.. ' (' .. tostring(roles and roles:ActiveContext() or '-') .. '), identity circles: ' .. (CompatSetting('identityCircles', true) and 'on' or 'off'))
 	Print('pvp: ' .. self:PvPText())
 	local art1 = _G.BanzaiCompat
@@ -1039,6 +1308,7 @@ function Restore:Status()
 		tostring(CompatSetting('tooltipTheme', 'BANZAI')), CompatSetting('panelTips', true) and 'on' or 'off'))
 	local sync = ns.Sync
 	if sync and sync.StatusText then Print('character sync: ' .. sync:StatusText()) end
+	for _, line in ipairs(self:SkinLines()) do Print(line) end -- 1.5.0-dev3
 	if record and record.previous then
 		Print('previous ElvUI profile: ' .. tostring(record.previous.elvProfile) .. ', previous private: ' .. tostring(record.previous.privateProfile) .. ', previous Details: ' .. tostring(record.previous.details))
 	end
@@ -1386,7 +1656,91 @@ function Restore:SetPanelBackground(mode)
 	mode = (mode == 'SOLID' or mode == 'PARCHMENT') and mode or 'GLASS'
 	CompatSet('panelBackground', mode)
 	self:ApplyDetailsInk()
+	self:ApplyElvUIPanels() -- 1.5.0-dev3: ElvUI's panels follow the material while that window skin is on
 	return mode
+end
+
+---------------------------------------------------------------------------
+-- 1.5.0-dev3 BANZAI > APPEARANCE > WINDOW SKINS (Banzai Art Skins.lua draws them; WoW Forever only)
+---------------------------------------------------------------------------
+-- The switches are Banzai Art settings (per character, synced as visual preferences). One of them, ELVUI
+-- PANELS, is a value of the Banzai ElvUI profile, so it is written here: general.backdropfadecolor, the
+-- colour of ElvUI's own translucent panels. What the profile held before is kept once (account-wide, like the
+-- profile) and put back when the switch goes off. Nothing of another profile is ever written, so RESTORE
+-- PRE-BANZAI needs no step for it: the character leaves the Banzai profile and its own profile is as it was.
+Restore.WINDOW_SKINS = { skinBlizzard = true, skinBaganator = true, skinZygor = true, skinElvUI = true }
+
+local function SameColor(a, b)
+	if type(a) ~= 'table' or type(b) ~= 'table' then return false end
+	for _, k in ipairs({ 'r', 'g', 'b', 'a' }) do
+		if math.abs((tonumber(a[k]) or -1) - (tonumber(b[k]) or -1)) > 0.0005 then return false end
+	end
+	return true
+end
+
+-- Returns what it did: 'not on this client' | 'no Banzai profile' | 'unchanged' | 'BANZAI tone' | 'ElvUI colour back'
+function Restore:ApplyElvUIPanels()
+	local art = _G.BanzaiCompat
+	local skins = art and art.Skins
+	if not (skins and skins.Supported and skins.Supported()) then return 'not on this client' end
+	local profile = BanzaiProfile()
+	if not profile then return 'no Banzai profile' end
+	local db = DB()
+	local general = T.Ensure(profile, 'general')
+	local on = CompatSetting('skinElvUI', false) == true
+	local result
+	if on then
+		local want = skins.PanelColor()
+		-- what to put back: the colour the profile holds whenever it is not the one BANZAI wrote last (the first
+		-- time, and again after the profile was rebuilt by APPLY / repair) - never BANZAI's own tone
+		local state = db.elvuiPanels
+		if type(state) ~= 'table' then
+			state = { previous = T.DeepCopy(general.backdropfadecolor) or false }
+			db.elvuiPanels = state
+		elseif not SameColor(general.backdropfadecolor, state.written) and not SameColor(general.backdropfadecolor, want) then
+			state.previous = T.DeepCopy(general.backdropfadecolor) or false
+		end
+		state.written = T.DeepCopy(want)
+		if SameColor(general.backdropfadecolor, want) then return 'unchanged' end
+		general.backdropfadecolor = want
+		result = 'BANZAI tone'
+	else
+		if type(db.elvuiPanels) ~= 'table' then return 'unchanged' end
+		general.backdropfadecolor = T.DeepCopy(db.elvuiPanels.previous) or nil -- (none before: ElvUI's own default again)
+		db.elvuiPanels = nil
+		result = 'ElvUI colour back'
+	end
+	-- ElvUI reads its media from the profile and recolours the panels it registered (its own two calls; only on the Banzai profile)
+	local E = Engine()
+	if E and E.data and E.data.GetCurrentProfile and E.data:GetCurrentProfile() == T.PROFILE and not InCombatLockdown() then
+		if type(E.UpdateMedia) == 'function' then pcall(E.UpdateMedia, E) end
+		if type(E.UpdateFrameTemplates) == 'function' then pcall(E.UpdateFrameTemplates, E) end
+	end
+	return result
+end
+
+function Restore:SetWindowSkin(key, on)
+	if not self.WINDOW_SKINS[key] then return false end
+	CompatSet(key, on and true or false)
+	if key == 'skinElvUI' then self:ApplyElvUIPanels() end
+	return true
+end
+
+-- /banzai status and /banzai forever: the window skins and the Forever chat arrangement, as Banzai Art reports them
+function Restore:SkinLines()
+	local art = _G.BanzaiCompat
+	local lines = {}
+	local skins = art and art.Skins
+	if skins and skins.Report then
+		for _, line in ipairs(skins:Report()) do lines[#lines + 1] = 'window skin - ' .. line end
+		if skins.lastError then lines[#lines + 1] = 'window skin error (last seen): ' .. tostring(skins.lastError) end
+	end
+	local chat = art and art.ChatLayout
+	if chat and chat.StatusText then
+		lines[#lines + 1] = 'chat windows: ' .. chat:StatusText()
+		if chat.lastError then lines[#lines + 1] = 'chat layout error (last seen): ' .. tostring(chat.lastError) end
+	end
+	return lines
 end
 
 function Restore:ApplyDetailsInk()
@@ -1594,13 +1948,24 @@ SlashCmdList.BANZAI = function(input)
 		Restore:Revert()
 	elseif command == 'theme' then
 		Restore:SetTheme(argument)
+	elseif command == 'role' then
+		local roles = ns.Roles
+		if roles and roles.SetOverride then
+			local ok, message = roles:SetOverride(argument)
+			Print(message)
+		else
+			Print('Role override is unavailable.')
+		end
 	elseif command == 'editmode' then
 		Restore:ImportEditMode()
 	elseif command == 'status' then
 		Restore:Status()
-		Print('commands: /banzai (options) | status | apply | restore | theme vibrant|class | editmode')
+		Print('commands: /banzai (options) | status | forever | apply | restore | theme vibrant|class | role auto|dps|healer | editmode')
+	elseif command == 'forever' or command == 'preflight' or command == 'client' then
+		-- 1.5.0-dev1: the client, the prerequisites as Banzai really uses them, and what the client adapter did
+		for _, line in ipairs(Restore:ClientReport()) do Print(line) end
 	else
-		Print(NAME .. ' ' .. VERSION .. ' - settings: ElvUI options > BANZAI. /banzai status for details.')
+		Print(NAME .. ' ' .. VERSION .. ' (' .. CHANNEL .. ', ' .. (Flavor and Flavor.ClientText() or 'Retail') .. ') - settings: ElvUI options > BANZAI. /banzai status for details.')
 		Restore:OpenOptions()
 	end
 end
@@ -1625,7 +1990,12 @@ function Restore:OnLogin()
 		-- a build without new layer keys: the version only (no reload needed)
 		record.applied.version = VERSION
 		record.applied.upgraded = date('%Y-%m-%d %H:%M:%S')
-		Print(format('updated to %s %s: licensed display-font selection locked to Shojumaru; unsupported strings use the Information Font, and approved layouts and features are unchanged.', NAME, VERSION))
+		if CHANNEL == 'release' then
+			-- 1.5.0: one product for Retail and WoW Forever
+			Print(format('updated to %s %s (%s): WoW Forever support and optional window skins there; the approved Retail layouts and features are unchanged. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail'))
+		else
+			Print(format('updated to %s %s (%s, %s). /banzai forever shows the client report.', NAME, VERSION, CHANNEL, Flavor and Flavor.ClientText() or 'Retail')) -- 1.5.0-dev1
+		end
 		if self.ApplyDetailsInk then self:ApplyDetailsInk() end -- 1.1.1: a character on parchment gets the readable text at once
 		-- 1.3.6: the two windows placed again around the centre gutter (geometry only), on Banzai's Details profile only
 		local details = _G.Details
@@ -1636,6 +2006,8 @@ function Restore:OnLogin()
 	local style = T.DetailsStyle(CompatSetting('detailsStyle', 'CURRENT'))
 	if record and record.applied and (style ~= T.DetailsStyle(DB().detailsStyleApplied) or (style == 'COMPACT' and (self:CompactNameFace() or false) ~= DB().detailsFaceApplied)) then self:ApplyDetailsStyle() end -- 1.3.1: or the COMPACT names' font
 	self:TrackerOwnership('login')
+	-- 1.5.0-dev3: the shared profile shows this character's ELVUI PANELS choice (written only when it differs)
+	if record and record.applied and UsesBanzaiProfile(key) then pcall(self.ApplyElvUIPanels, self) end
 	return result
 end
 
@@ -1674,11 +2046,13 @@ end)
 local trackerEvents = CreateFrame('Frame')
 trackerEvents:RegisterEvent('ADDON_LOADED')
 trackerEvents:RegisterEvent('PLAYER_ENTERING_WORLD')
-trackerEvents:RegisterEvent('FIRST_FRAME_RENDERED')
-trackerEvents:RegisterEvent('EDIT_MODE_LAYOUTS_UPDATED')
-trackerEvents:RegisterEvent('ACTIVE_TALENT_GROUP_CHANGED')
 trackerEvents:RegisterEvent('PLAYER_REGEN_ENABLED')
-trackerEvents:RegisterUnitEvent('PLAYER_SPECIALIZATION_CHANGED', 'player')
+-- 1.5.0-dev1: an event one client lacks must not stop this file from loading (registering an unknown event
+-- is an error); on Retail all four exist and are registered exactly as before
+for _, event in ipairs({ 'FIRST_FRAME_RENDERED', 'EDIT_MODE_LAYOUTS_UPDATED', 'ACTIVE_TALENT_GROUP_CHANGED' }) do
+	pcall(trackerEvents.RegisterEvent, trackerEvents, event)
+end
+pcall(trackerEvents.RegisterUnitEvent, trackerEvents, 'PLAYER_SPECIALIZATION_CHANGED', 'player')
 trackerEvents:SetScript('OnEvent', function(_, event, arg1)
 	if event == 'ADDON_LOADED' and arg1 ~= 'Blizzard_ObjectiveTracker' then return end
 	if event == 'PLAYER_REGEN_ENABLED' and not Restore.trackerPending then return end

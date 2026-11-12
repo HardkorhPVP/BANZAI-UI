@@ -536,7 +536,7 @@ test('0.8.0 settings: PvP choices and the preview state are BANZAI settings (Cha
 	local D = Theme.DEFAULTS
 	expectEq(D.pvpCastColors and D.pvpDispelGlow and D.pvpDefensives, true, 'PvP switches on by default')
 	expectEq(D.previewState, 'NORMAL', 'preview NORMAL by default')
-	expectEq(Theme.VERSION, '1.4.0', 'version')
+	expectEq(Theme.VERSION, '1.5.0', 'version')
 	Theme:DB().pvpDefensives = false
 	Theme:DB().previewState = 'CC'
 	local out = Theme:Export()
@@ -2159,7 +2159,7 @@ test('1.0.0 AFK screen: the character turning in the middle, HUD hidden while it
 	expect(string.find(HK_Plain(f.where.text), 'LEVEL 80', 1, true) and string.find(HK_Plain(f.where.text), 'DORNOGAL', 1, true), 'level and zone')
 	expect(string.find(f.logo.path, 'BanzaiLogo', 1, true), 'BANZAI')
 	expect(string.find(HK_Plain(f.brand.text), 'UI BY HARDKORH', 1, true), 'UI BY HARDKORH')
-	expect(string.find(HK_Plain(f.version.text), 'BANZAI 1.4.0', 1, true), 'version')
+	expect(string.find(HK_Plain(f.version.text), 'BANZAI 1.5.0', 1, true), 'version')
 	expect(string.find(f.tree.path, 'BanzaiBonsai', 1, true), 'the bamboo tree')
 	expect(f.art and f.art.icon, 'the Fabled class art')
 	expect(f.glass.gradient and f.glass.gradient[2].a < 0.95, 'dark translucent glass')

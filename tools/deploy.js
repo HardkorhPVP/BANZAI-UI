@@ -14,11 +14,12 @@ const thirdparty = require('./thirdparty');
 
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
-const RETAIL = 'D:\\Program Files (x86)\\World of Warcraft\\_retail_';
+const local = require('./lib/local');
+const RETAIL = path.join(local.WOW, '_retail_');
 const ADDONS = path.join(RETAIL, 'Interface', 'AddOns');
 const WTF = path.join(RETAIL, 'WTF');
-const BACKUP_ROOT = 'C:\\Users\\DarrenSteinke\\Desktop\\Bushido-Private-Restoration-Backups';
-const CHARACTER_ADDONS_TXT = path.join(WTF, 'Account', '1135454592#1', 'Stormrage', 'Darrensdrood', 'AddOns.txt');
+const BACKUP_ROOT = local.RETAIL_BACKUPS;
+const CHARACTER_ADDONS_TXT = local.CHARACTER_ADDONS_TXT; // (BANZAI_CHARACTER_ADDONS_TXT; unset: no character's addon list is touched)
 const DEPLOY = ['JiberishMedia', 'BushidoPrivateCompat', 'BushidoPrivateRestore'];
 const ENABLE = ['ElvUI', 'ElvUI_Libraries', 'ElvUI_Options', 'ElvUI_EltreumUI', 'ElvUI_mMediaTag', '!mMT_MediaPack', 'Details', 'JiberishIcons', ...DEPLOY];
 const DISABLE = ['HARDKORHUI'];
@@ -64,6 +65,13 @@ function backup() {
 }
 
 function main() {
+  // 1.5.0-dev1: this script writes to the RETAIL client. A private proof build (x.y.z-devN) is never deployed
+  // to Retail - BANZAI UI 1.4.0 stays there untouched; a WoW Forever proof is deployed by hand, with WoW closed.
+  const built = (fs.readFileSync(path.join(DIST, 'BushidoPrivateRestore', 'BushidoPrivateRestore.toc'), 'utf8').match(/## Version: (\S+)/) || [])[1] || '';
+  if (/-dev/.test(built)) {
+    console.error(`BANZAI ${built} is a private proof build: tools/deploy.js deploys to Retail and refuses it. Nothing was written.`);
+    process.exit(1);
+  }
   if (wowRunning()) {
     console.error('World of Warcraft is running. Close it completely and run again.');
     process.exit(1);
@@ -92,6 +100,7 @@ function main() {
   }
 
   // test character's addon list
+  if (!CHARACTER_ADDONS_TXT || !fs.existsSync(CHARACTER_ADDONS_TXT)) { console.log('no character addon list named (BANZAI_CHARACTER_ADDONS_TXT): none changed'); return; }
   const raw = fs.readFileSync(CHARACTER_ADDONS_TXT, 'utf8');
   const eol = raw.includes('\r\n') ? '\r\n' : '\n';
   const lines = raw.split(/\r?\n/).filter((l, i, all) => !(i === all.length - 1 && l === ''));
@@ -103,7 +112,7 @@ function main() {
   ENABLE.forEach((n) => set(n, 'enabled'));
   DISABLE.forEach((n) => set(n, 'disabled'));
   fs.writeFileSync(CHARACTER_ADDONS_TXT, lines.join(eol) + eol);
-  console.log(`Darrensdrood addon list: ${ENABLE.join(', ')} enabled; ${DISABLE.join(', ')} disabled`);
+  console.log(`character addon list: ${ENABLE.join(', ')} enabled; ${DISABLE.join(', ')} disabled`);
 
   const after = thirdparty.compare(before);
   if (after.changed.length) throw new Error(`third-party addon files changed during deploy: ${after.changed.slice(0, 5).join(', ')}`);

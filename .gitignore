@@ -2,6 +2,8 @@
 build/
 dist/
 node_modules/
+# the pinned upstream references (tools/fetch-references.js): fetched, never committed
+upstream/
 *.log
 build-manifest.json
 # development references only (third-party images Darren collected): never built, packaged or committed

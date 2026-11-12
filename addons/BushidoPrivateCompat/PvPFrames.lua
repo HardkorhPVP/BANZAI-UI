@@ -220,6 +220,7 @@ end
 -- Trinket circle
 ---------------------------------------------------------------------------
 function PvP.Medallion()
+	if ns.Flavor and ns.Flavor.IsForever() then return PvP.FALLBACK_ICON end
 	local texture = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(PvP.MEDALLION)
 	texture = Plain(texture)
 	if type(texture) == 'number' or type(texture) == 'string' then return texture end
@@ -260,7 +261,7 @@ function PvP:UpdateTrinket(c)
 	end
 	c:Show()
 	local data
-	if InArena() and C_PvP and C_PvP.GetArenaCrowdControlDuration then
+	if (not ns.Flavor or not ns.Flavor.IsForever()) and InArena() and C_PvP and C_PvP.GetArenaCrowdControlDuration then
 		local ok, value = pcall(C_PvP.GetArenaCrowdControlDuration, unit)
 		if ok then data = value end
 	end
@@ -411,6 +412,13 @@ function PvP:Refresh()
 	for _, entry in pairs(built) do
 		self:UpdateTrinket(entry.trinket)
 		self:UpdateMarkers(entry)
+	end
+
+	function PvP:CapabilityReport()
+		if ns.Flavor and ns.Flavor.IsForever() then
+			return 'Forever trinket state stays UNKNOWN (no verified arena-duration API); target/focus markers require live validation.'
+		end
+		return 'Retail arena trinket data and markers'
 	end
 end
 

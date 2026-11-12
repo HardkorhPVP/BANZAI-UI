@@ -110,7 +110,7 @@ test('first login applies nothing by itself (public release: AUTO_APPLY is empty
 	expectEq(E.data:GetCurrentProfile(), NAME, 'ElvUI profile switched')
 	expectEq(HK_POPUPS[#HK_POPUPS], 'BANZAI_RELOAD', 'reload prompt')
 	expectEq(record().layer, T.LAYER, "Banzai layer " .. T.LAYER .. " recorded")
-	expectEq(record().applied.version, '1.4.0', 'version recorded')
+	expectEq(record().applied.version, '1.5.0', 'version recorded')
 end)
 
 test('existing ElvUI profiles are untouched; previous state recorded', function()
@@ -417,16 +417,16 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 	expect(string.find(page.args.brand.image(), 'BanzaiLogo', 1, true), 'Banzai logo above the list')
 	local brand = HK_Plain(page.args.brand.name())
 	expect(string.find(brand, 'UI BY HARDKORH', 1, true), 'UI BY HARDKORH')
-	expect(string.find(brand, 'BANZAI 1.4.0', 1, true), 'version in the GUI')
-	expect(string.find(brand, 'release', 1, true), 'release wording')
-	expect(string.find(HK_Plain(page.args.home.args.header.name), 'BANZAI 1.4.0', 1, true), 'version on HOME')
+	expect(string.find(brand, 'BANZAI 1.5.0', 1, true), 'version in the GUI')
+	expect(string.find(brand, 'release', 1, true) and not string.find(brand, 'PROOF', 1, true), 'the channel: a release, no proof label')
+	expect(string.find(HK_Plain(page.args.home.args.header.name), 'BANZAI 1.5.0', 1, true), 'version on HOME')
 	local home = HK_Plain(page.args.home.args.status.name())
-	for _, needle in ipairs({ 'BANZAI 1.4.0', 'Darrensdrood - Stormrage', 'Druid', 'Feral', 'SPEC ROLE   DPS', NAME, 'ACTIVE', 'CHARACTER SYNC', 'BANZAI MASTER', 'COMPONENTS' }) do
+	for _, needle in ipairs({ 'BANZAI 1.5.0', 'Darrensdrood - Stormrage', 'Druid', 'Feral', 'SPEC ROLE   DPS', NAME, 'ACTIVE', 'CHARACTER SYNC', 'BANZAI MASTER', 'COMPONENTS' }) do
 		expect(string.find(home, needle, 1, true), 'HOME shows ' .. needle)
 	end
 	expectEq(Find(page.args.home, 'apply').type, 'execute', 'Apply / repair')
 	expectEq(Find(page.args.home, 'reload').type, 'execute', 'Reload UI')
-	expect(string.find(HK_Plain(Find(page.args.about, 'version').name), 'Retail release.', 1, true), 'ABOUT: the release')
+	expect(string.find(HK_Plain(Find(page.args.about, 'version').name), 'Release for Retail and WoW Forever; this client: Retail 12.1.5 (build 69848, Interface 120105).', 1, true), 'ABOUT: the release and its client')
 	local credits = HK_Plain(Find(page.args.about, 'list').name())
 	for _, name in ipairs({ 'JiberishUI Bushido', 'ElvUI', 'Eltruism', 'mMediaTag', 'Jiberish Icons', 'Details', 'Kaliel', 'Syndicator', 'MinimapButtonButton', 'GasoekOne' }) do
 		expect(string.find(credits, name, 1, true), 'credits ' .. name)
@@ -510,7 +510,7 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 	-- CHARACTER SYNC: status cards and buttons, no console dump
 	local sync = SyncCards()
 	expectEq(page.args.sync.childGroups, 'tab', '1.0.1: STATUS / WHAT SYNCS / DIAGNOSTICS')
-	expect(string.find(HK_Plain(page.args.sync.args.header.name()), 'BANZAI 1.4.0', 1, true), 'the version on CHARACTER SYNC')
+	expect(string.find(HK_Plain(page.args.sync.args.header.name()), 'BANZAI 1.5.0', 1, true), 'the version on CHARACTER SYNC')
 	for _, card in ipairs({ 'this', 'master', 'version', 'synced', 'owned', 'never', 'components', 'characters' }) do
 		expectEq(sync[card].type, 'group', 'card ' .. card)
 		expectEq(sync[card].inline, true, card .. ' drawn as a card')
@@ -528,7 +528,7 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 		expect(string.find(plan, needle, 1, true), 'synced: ' .. needle)
 	end
 	expectEq(Find(page.args.backup, 'restore').disabled(), false, 'restore available')
-	expect(string.find(HK_Plain(page.args.backup.args.snapshot.args.status.name()), 'Banzai 1.4.0 applied', 1, true), 'current snapshot')
+	expect(string.find(HK_Plain(page.args.backup.args.snapshot.args.status.name()), 'Banzai 1.5.0 applied', 1, true), 'current snapshot')
 end)
 
 test('BANZAI options: 0.4.0 settings write the Banzai profile and the art settings', function()
@@ -789,10 +789,10 @@ test('upgrade from 0.3.0 at addon load: used on this login, no reload prompt', f
 	expectEq(ns.Restore:OnLogin(), true, 'completed after login')
 	expectEq(HK_DetailsWindow2.libwindow.x, -47.15, 'Details composition')
 	expectEq(r.layer, T.LAYER, 'layer recorded')
-	expectEq(r.applied.version, '1.4.0', 'version recorded')
+	expectEq(r.applied.version, '1.5.0', 'version recorded')
 	expectEq(r.previous.elvProfile, 'HARDKORHUI', 'original previous profile kept for rollback')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.4.0', 1, true), 'update reported in chat')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.0', 1, true), 'update reported in chat')
 	expectEq(ns.Restore:OnLogin(), nil, 'runs once')
 end)
 
@@ -834,7 +834,7 @@ test('upgrade from 0.4.0 at addon load: smooth bars, cooldown bars off, action b
 	expectEq(p.darrenTweak, 'kept', 'unrelated keys kept')
 	expectEq(ns.Restore:OnLogin(), true, 'completed after login')
 	expectEq(r.layer, T.LAYER, 'current layer')
-	expectEq(r.applied.version, '1.4.0', 'version')
+	expectEq(r.applied.version, '1.5.0', 'version')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectEq(r.previous.minimapButton.y, MBB_Y, 'rollback record kept')
 end)
@@ -917,7 +917,7 @@ test('/banzai opens the BANZAI options on HOME; status shows BANZAI 1.2.1; /bush
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('status')
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.4.0', 1, true), 'status reports BANZAI 1.4.0')
+	expect(string.find(text, 'BANZAI 1.5.0', 1, true), 'status reports BANZAI 1.5.0')
 	expect(string.find(text, 'Player / Target / Focus / Target-of-Target 50% of Bushido\'s width, AFK screen: Banzai, tooltip theme: BANZAI', 1, true), '1.0.0 state reported')
 	expect(string.find(text, 'spec role: DPS (Feral), frame layout in use: DPS', 1, true), 'role reported')
 	expect(string.find(text, 'character sync: ', 1, true), 'sync state reported')
@@ -926,7 +926,7 @@ test('/banzai opens the BANZAI options on HOME; status shows BANZAI 1.2.1; /bush
 	expect(string.find(text, 'target cooldown bars (ElvUI 2 + 4): off', 1, true), 'cooldown bars reported')
 	expect(string.find(text, 'Banzai tracker: on', 1, true), 'tracker state reported')
 	expect(string.find(text, 'all present', 1, true), 'status-bar textures reported present')
-	expectEq(StaticPopupDialogs.BANZAI_RELOAD.text:find('1.4.0', 1, true) ~= nil, true, 'reload dialog names 1.4.0')
+	expectEq(StaticPopupDialogs.BANZAI_RELOAD.text:find('1.5.0', 1, true) ~= nil, true, 'reload dialog names 1.5.0')
 end)
 
 ---------------------------------------------------------------------------
@@ -1108,7 +1108,7 @@ test('character sync: BANZAI MASTER captured, alt applied with its backup, visua
 	expectEq(m.class, 'Druid', 'class')
 	expectEq(m.spec, 'Feral', 'spec')
 	expectEq(m.role, 'DPS', 'role')
-	expectEq(m.version, '1.4.0', 'Banzai version')
+	expectEq(m.version, '1.5.0', 'Banzai version')
 	expectEq(m.schema, ns.Sync.SCHEMA, 'configuration schema')
 	expectEq(m.specID, 103, 'spec id')
 	expectEq(m.revision, 1, 'configuration #1')
@@ -1119,7 +1119,7 @@ test('character sync: BANZAI MASTER captured, alt applied with its backup, visua
 	S:Capture()
 	expectEq(m.revision, 1, 'nothing changed: same revision')
 	local card = HK_Plain(page.master.args.info.name())
-	for _, needle in ipairs({ KEY, 'Druid', 'FERAL', 'DPS', '1.4.0', 'SCHEMA 2', '#1' }) do expect(string.find(card, needle, 1, true), 'master card shows ' .. needle) end
+	for _, needle in ipairs({ KEY, 'Druid', 'FERAL', 'DPS', '1.5.0', 'SCHEMA 3', '#1' }) do expect(string.find(card, needle, 1, true), 'master card shows ' .. needle) end
 	expect(string.find(HK_Plain(page.version.args.text.name()), 'In step', 1, true), 'version drift: none')
 	expectEq(page.master.args.capture.hidden(), false, 'CAPTURE MASTER NOW on the master')
 
@@ -1844,18 +1844,18 @@ test('1.0.1 sync: no master until Darren sets one; SET AS BANZAI MASTER captures
 	cards.master.args.setMaster.func()
 	local m = S:Master()
 	expectEq(m.key .. '|' .. m.classToken .. '|' .. m.spec .. '|' .. m.role, KEY .. '|DRUID|Balance|DPS', 'identity: character, class, spec, role')
-	expectEq(m.version .. '|' .. m.schema, '1.4.0|' .. S.SCHEMA, 'BANZAI version and configuration schema')
+	expectEq(m.version .. '|' .. m.schema, '1.5.0|' .. S.SCHEMA, 'BANZAI version and configuration schema')
 	local keys = {}
 	for k in pairs(m.config) do keys[#keys + 1] = k end
 	table.sort(keys)
-	expectEq(table.concat(keys, ','), 'fonts,layout,settings', 'only Banzai-owned parts: its settings, fonts, unit layout')
+	expectEq(table.concat(keys, ','), 'flavor,fonts,layout,settings', 'only Banzai-owned parts: client flavor, settings, fonts, unit layout')
 	expectEq(HasKey(m.config, GAMEPLAY_KEYS), nil, 'no gameplay data in the master setup')
 	expectEq(m.config.settings.cdTracked, nil, 'the tracked cooldowns (class abilities) stay with the Druid')
 	expect(not string.find(T.Serialize(m.config), 'DRUID', 1, true) and not string.find(T.Serialize(m.config), '22812', 1, true), 'no Druid class key or spell in the setup')
 	local text = T.Serialize(m.config)
 	for _, word in ipairs({ 'Balance', 'Feral', 'Druid', 'Restoration' }) do expect(not string.find(text, word, 1, true), 'no Druid identity in the setup (' .. word .. ')') end
 	local card = HK_Plain(cards.master.args.info.name())
-	for _, needle in ipairs({ KEY, 'Druid', 'BALANCE', 'DPS', 'BANZAI 1.4.0', 'SCHEMA ' .. S.SCHEMA, '#' }) do expect(string.find(card, needle, 1, true), 'master card: ' .. needle) end
+	for _, needle in ipairs({ KEY, 'Druid', 'BALANCE', 'DPS', 'BANZAI 1.5.0', 'SCHEMA ' .. S.SCHEMA, '#' }) do expect(string.find(card, needle, 1, true), 'master card: ' .. needle) end
 	expectEq(cards.master.args.setMaster.hidden(), true, 'set')
 	expectEq(cards.master.args.capture.hidden(), false, 'CAPTURE MASTER NOW on the master')
 end)
@@ -1882,7 +1882,7 @@ test('1.0.1 sync: an unsynced alt stays untouched until Darren clicks - no autom
 	expectEq(cards.this.args.apply.hidden(), false, 'APPLY BANZAI offered')
 	expectEq(cards.this.args.restore.hidden(), true, 'nothing to restore')
 	local status = HK_Plain(cards.synced.args.list.name())
-	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'MASTER BANZAI VERSION   1.4.0', 'THIS CHARACTER   ' .. ROGUE, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   none', 'SYNC STATE   THIS CHARACTER IS NOT SYNCED' }) do
+	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'MASTER BANZAI VERSION   1.5.0', 'THIS CHARACTER   ' .. ROGUE, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   none', 'SYNC STATE   THIS CHARACTER IS NOT SYNCED' }) do
 		expect(string.find(status, needle, 1, true), 'sync status: ' .. needle)
 	end
 	local diag = HK_Plain(cards.components.args.list.name())
@@ -1950,7 +1950,7 @@ test('1.0.1 sync: APPLY BANZAI on a DPS alt - backup first, its own class / spec
 	expectEq(HasKey(compatDB(), { 'classtoken', 'spec', 'specid' }), nil, 'no class / spec identity in its BANZAI settings')
 	expect(compat.cdTracked.ROGUE[5277] == false and compat.cdTracked.DRUID == nil, 'its own tracked cooldowns kept, none of the Druid\'s')
 	local status = HK_Plain(cards.synced.args.list.name())
-	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   BANZAI 1.4.0, schema ' .. S.SCHEMA, 'SYNC STATE   BANZAI SYNCED' }) do
+	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   BANZAI 1.5.0, schema ' .. S.SCHEMA, 'SYNC STATE   BANZAI SYNCED' }) do
 		expect(string.find(status, needle, 1, true), 'sync status: ' .. needle)
 	end
 	-- gameplay
@@ -2294,7 +2294,7 @@ test('1.0.2 tracker: APPLY BANZAI with the Banzai tracker on parks Blizzard\'s t
 	HK_PRINTS = {}
 	ns.Restore:Status()
 	expect(string.find(table.concat(HK_PRINTS, '\n'), 'Blizzard\'s tracker: parked while the Banzai tracker shows', 1, true), '/banzai status says so')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.4.0', 1, true), '/banzai status: 1.4.0')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.5.0', 1, true), '/banzai status: 1.5.0')
 	expectEq(#HK_GAMEPLAY_CALLS, 0, 'no gameplay call')
 end)
 
@@ -3058,7 +3058,7 @@ test('1.3.0 /banzai status names the frame style (chosen and this session\'s) an
 	ns.Restore:Status()
 	local text = table.concat(HK_PRINTS, '\n')
 	expect(string.find(text, 'frame style: BANZAI CLASSIC (this session: BANZAI CLASSIC), Details meter style: BANZAI CURRENT', 1, true), 'status line')
-	expect(string.find(text, 'BANZAI 1.4.0', 1, true), 'version')
+	expect(string.find(text, 'BANZAI 1.5.0', 1, true), 'version')
 end)
 
 test('1.3.0 review: the health-percentage switch keeps working while the profile carries the split layer (health under the bars)', function()
@@ -3234,7 +3234,7 @@ test('licensed display-font status and texts: /banzai status identifies Shojumar
 	HK_PRINTS = {}
 	ns.Restore:Status()
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.4.0', 1, true), 'status: BANZAI 1.4.0')
+	expect(string.find(text, 'BANZAI 1.5.0', 1, true), 'status: BANZAI 1.5.0')
 	expect(string.find(text, 'Display font: Shojumaru at 105%, license: SIL Open Font License 1.1, registered:', 1, true), 'status: licensed Shojumaru default at 105%')
 	CompatStub.Theme = nil
 	local page = ns.Options:Build()
@@ -3349,10 +3349,10 @@ test('licensed selection-lock version-only update (no layer key, no setting, no 
 	r.applied.version = '1.3.4'
 	HK_PRINTS, HK_POPUPS = {}, {}
 	expectEq(ns.Restore:OnLogin(), true, 'the update runs at login')
-	expectEq(r.applied.version, '1.4.0', 'version recorded')
+	expectEq(r.applied.version, '1.5.0', 'version recorded')
 	local said = table.concat(HK_PRINTS, '\n')
-	expect(string.find(said, 'updated to BANZAI 1.4.0: licensed display-font selection locked to Shojumaru', 1, true), 'the update identifies the selected licensed face')
-	expect(string.find(said, 'unsupported strings use the Information Font, and approved layouts and features are unchanged', 1, true), 'says what stayed')
+	expect(string.find(said, 'updated to BANZAI 1.5.0 (Retail 12.1.5 (build 69848, Interface 120105)): WoW Forever support and optional window skins there; the approved Retail layouts and features are unchanged. /banzai forever shows the client report.', 1, true), 'the update names the release and the client')
+	expect(string.find(said, '/banzai forever shows the client report', 1, true), 'and where the client report is')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectEq(r.layer, T.LAYER, 'the layer as it was')
 	expectEq(T.SPLIT.version, 4, 'the split layer unchanged (no rewrite at login)')
@@ -3417,8 +3417,8 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	HK_PRINTS, HK_POPUPS = {}, {}
 	local n0 = #HK_TIMERS
 	expectEq(R:OnLogin(), true, 'the update runs at login')
-	expectEq(r.applied.version, '1.4.0', 'version recorded')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.4.0: licensed display-font selection locked to Shojumaru', 1, true), 'the chat names the selected licensed face')
+	expectEq(r.applied.version, '1.5.0', 'version recorded')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.0 (Retail 12.1.5', 1, true), 'the chat names the release and the client')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectNear(left.posicao.normal.w, 207.5 / 0.75, 'left window narrower')
 	expectNear(right.posicao.normal.w, 207.5 / 0.75, 'right window narrower')
@@ -3449,7 +3449,24 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	expectEq(table.concat(right.display, ',') .. '/' .. tostring(left.ativa), '7,3,1/false', 'still geometry only')
 	expectEq(R.detailsGeometryPending, nil, 'once')
 	-- the full arrangement (APPLY, Arrange side by side) still opens both and shows DAMAGE | HEALING
+	local oldLeftDisplay, oldRightDisplay = left.SetDisplay, right.SetDisplay
+	left.SetDisplay = function(self, ...)
+		oldLeftDisplay(self, ...)
+		self.posicao.normal.w, self.libwindow.x = 1, 999
+	end
+	right.SetDisplay = function(self, ...)
+		oldRightDisplay(self, ...)
+		self.posicao.normal.w, self.libwindow.x = 1, 999
+	end
+	local oldIsForever = ns.Flavor.IsForever
+	ns.Flavor.IsForever = function() return true end
 	R:LayoutDetails()
+	ns.Flavor.IsForever = oldIsForever
+	expectNear(left.posicao.normal.w, 207.5 / 0.75, 'left geometry is reapplied after Details reflows its display')
+	expectNear(right.posicao.normal.w, 207.5 / 0.75, 'right geometry is reapplied after Details reflows its display')
+	expectEq(left.libwindow.x, -47.15 - 207.5 - 15, 'left anchor survives display reflow')
+	expectEq(right.libwindow.x, -47.15, 'right anchor survives display reflow')
+	left.SetDisplay, right.SetDisplay = oldLeftDisplay, oldRightDisplay
 	expectEq(left.ativa, true, 'opened')
 	expectEq(left.display[2] .. '|' .. right.display[2], '1|2', 'DAMAGE | HEALING')
 end)

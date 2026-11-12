@@ -1,0 +1,119 @@
+# BANZAI UI release: public source -> deterministic build -> the complete package -> GitHub Release, CurseForge, Wago.
+#
+#   push of a tag banzai-X.Y.Z   builds, tests, packages, checks the package against the checksum committed with
+#                                the release notes, then publishes (GitHub Release, CurseForge 1793334, Wago BKpEZrGE)
+#   Run workflow (manual)        the same build, tests, package and checksum check, and a publish DRY RUN:
+#                                nothing is released or uploaded
+#
+# One package serves World of Warcraft Retail and WoW Forever (the TOCs' `## Interface: 120105, 16001`).
+# Secrets used: CF_API_KEY, WAGO_API_TOKEN (never printed). No other private input: the two upstream references
+# the build reads are public repositories fetched at pinned commits.
+name: Release
+
+on:
+  push:
+    tags:
+      - 'banzai-[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      PUBLISH: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/banzai-') }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install the locked tools
+        run: npm ci
+
+      - name: Fetch the pinned upstream references
+        run: node tools/fetch-references.js
+
+      - name: Build
+        run: npm run build
+
+      - name: Test (Retail and WoW Forever suites)
+        run: npm test
+
+      - name: Forever / package contracts
+        run: node tools/forevercheck.js
+
+      - name: Package
+        run: node tools/release.js
+
+      - name: The package is the reviewed one
+        run: |
+          version="$(sed -n 's/^## Version: *//p' dist/BushidoPrivateRestore/BushidoPrivateRestore.toc | tr -d '\r')"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          if [ "$PUBLISH" = "true" ] && [ "banzai-$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match the built version $version"; exit 1
+          fi
+          expected="release-notes/BANZAI-UI-$version.sha256"
+          if [ ! -f "$expected" ]; then echo "no reviewed checksum committed for $version ($expected)"; exit 1; fi
+          want="$(cut -d' ' -f1 "$expected")"
+          got="$(cut -d' ' -f1 "release/BANZAI-UI-$version.zip.sha256")"
+          echo "reviewed $want"; echo "built    $got"
+          [ "$want" = "$got" ] || { echo "the built package is not the reviewed package"; exit 1; }
+
+      # Before anything is released: both secrets are present and both clients resolve on both platforms.
+      # A tag never gets a GitHub Release that CurseForge or Wago could not follow.
+      - name: Publish preflight (nothing is uploaded)
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+        run: |
+          missing=""
+          [ -n "$CF_API_KEY" ] || missing="$missing CF_API_KEY"
+          [ -n "$WAGO_API_TOKEN" ] || missing="$missing WAGO_API_TOKEN"
+          if [ -n "$missing" ]; then
+            if [ "$PUBLISH" = "true" ]; then echo "repository secret(s) not set:$missing - nothing is published"; exit 1; fi
+            echo "::warning::repository secret(s) not set:$missing - a release tag would be refused"
+          fi
+          node tools/publish.js --dry-run
+
+      - name: Keep the package (dry run)
+        if: env.PUBLISH != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: BANZAI-UI-${{ env.VERSION }}-dry-run
+          path: |
+            release/BANZAI-UI-${{ env.VERSION }}.zip
+            release/BANZAI-UI-${{ env.VERSION }}.zip.sha256
+            release/release.json
+
+      - name: GitHub Release
+        if: env.PUBLISH == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "a release for $GITHUB_REF_NAME already exists - nothing is published twice"; exit 1
+          fi
+          gh release create "$GITHUB_REF_NAME" \
+            "release/BANZAI-UI-$VERSION.zip" "release/BANZAI-UI-$VERSION.zip.sha256" release/release.json \
+            --title "BANZAI UI $VERSION" --notes-file "release-notes/BANZAI-UI-$VERSION.md" --verify-tag
+
+      - name: CurseForge
+        if: env.PUBLISH == 'true'
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: node tools/publish.js curseforge
+
+      - name: Wago
+        if: env.PUBLISH == 'true'
+        env:
+          WAGO_API_TOKEN: ${{ secrets.WAGO_API_TOKEN }}
+        run: node tools/publish.js wago

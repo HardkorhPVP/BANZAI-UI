@@ -28,3 +28,4 @@ Page: **BANZAI > CHARACTER SYNC**, tabs **STATUS**, **WHAT SYNCS**, **DIAGNOSTIC
 
 - Characters sharing the ElvUI profile still each keep their own frame style; it is applied at their login.
 - A synced character can be put back any time from CHARACTER SYNC or **BACKUP & RESTORE > CHARACTER RESTORE > Restore this character** (this also restores its own BANZAI settings from before sync and stops it being synced).
+- **Retail and WoW Forever are kept apart.** Every master configuration records the client it was captured on; applying or updating from a master of the other client is refused before anything is backed up or changed. The Window Skin switches travel with the other visual preferences; no setting of another addon is synced.

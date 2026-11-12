@@ -1923,4 +1923,196 @@ function T.StyleDetailsWindows(profile, smooth, fonts, style, iconFile, nameFace
 	return n
 end
 
+---------------------------------------------------------------------------
+-- 1.5.0-dev1: the client adapter (WoW Forever)
+---------------------------------------------------------------------------
+-- The Banzai profile is built from Retail data. ElvUI 16.01 is one code base for both clients and its
+-- settings have the same shape on WoW Forever: its default profile was compared leaf by leaf under both
+-- clients (27,690 leaves) - no key is Retail-only, Forever adds seven bag keys, and 22 default VALUES
+-- differ. Of those only two kinds can reach a profile Banzai writes, and they are what this adapter handles:
+--   [petbattle]   a macro condition Forever does not have; every Forever default visibility drops it
+--                 (bar1 '[petbattle] hide; show' -> 'show'). A bracket holding it can never be true there:
+--                 the bracket goes, and a clause left with no bracket goes with it.
+--   [spec:N]      Forever has talent trees, no numbered specialization, and its default drops the condition
+--                 instead of the bracket ('[form:1, spec:3] 7;' -> '[form:1] 7;'). What a Retail profile meant
+--                 by it cannot be known, so the whole setting is left out and ElvUI's own default stands.
+-- Everything else is written as on Retail. A datatext or a tag the installed client does not register is
+-- not rewritten either (ElvUI shows nothing for it on both clients): it is only listed, so the difference
+-- is visible in /banzai forever. Retail has no rules: the profile is never touched there.
+T.CLIENTS = {
+	FOREVER = {
+		neverTrue = { petbattle = true },    -- the bracket goes
+		alwaysTrue = { nopetbattle = true }, -- only the condition goes
+		unknown = { spec = true, nospec = true }, -- the setting is left out
+		reasons = {
+			petbattle = 'pet battles do not exist on WoW Forever (ElvUI\'s Forever defaults drop the condition)',
+			nopetbattle = 'pet battles do not exist on WoW Forever (ElvUI\'s Forever defaults drop the condition)',
+			spec = 'WoW Forever has talent trees, not numbered specializations: ElvUI\'s default stands',
+			nospec = 'WoW Forever has talent trees, not numbered specializations: ElvUI\'s default stands',
+		},
+	},
+}
+
+-- the name of one macro condition: 'bonusbar:1' -> 'bonusbar', ' NoPetBattle ' -> 'nopetbattle', '@raid6' -> '@raid6'
+local function ConditionName(condition)
+	local name = string.match(condition, '^%s*([^:%s]*)')
+	return string.lower(name or '')
+end
+
+-- one clause ('[a][b,c] result'): its text for this client; nil when no bracket of it can be true any more;
+-- false when it holds a condition the client cannot answer
+local function AdaptClause(clause, rules, note)
+	local lead = string.match(clause, '^%s*')
+	local rest = string.sub(clause, #lead + 1)
+	local kept, touched, finalGap = {}, false, ''
+	while true do
+		local bracket = string.match(rest, '^%b[]')
+		if not bracket then break end
+		local gap = string.match(string.sub(rest, #bracket + 1), '^%s*')
+		rest = string.sub(rest, #bracket + #gap + 1)
+		finalGap = gap
+		local conditions, never = {}, false
+		for condition in string.gmatch(string.sub(bracket, 2, -2) .. ',', '([^,]*),') do
+			local name = ConditionName(condition)
+			if rules.unknown[name] then
+				note(name)
+				return false
+			elseif rules.neverTrue[name] then
+				never, touched = true, true
+				note(name)
+			elseif rules.alwaysTrue[name] then
+				touched = true
+				note(name)
+			else
+				conditions[#conditions + 1] = condition
+			end
+		end
+		if not never then kept[#kept + 1] = { text = '[' .. table.concat(conditions, ','):gsub('^%s+', '') .. ']', gap = gap } end
+	end
+	if not touched then return clause end
+	if #kept == 0 then return nil end
+	-- the space between the brackets and the result is the clause's own, whichever bracket carried it
+	local text = lead
+	for i, bracket in ipairs(kept) do text = text .. bracket.text .. (i == #kept and finalGap or bracket.gap) end
+	return text .. rest
+end
+
+-- A macro condition string ('[vehicleui][petbattle] hide; show') for a client. Returns the text (the same
+-- string when nothing in it needs the client), or nil when the setting cannot be carried over, and the
+-- names of the conditions taken out, in the order met.
+function T.AdaptConditions(text, flavor)
+	local rules = T.CLIENTS[flavor]
+	local removed, seen = {}, {}
+	if type(text) ~= 'string' or not rules then return text, removed end
+	local function note(name)
+		if not seen[name] then seen[name] = true removed[#removed + 1] = name end
+	end
+	local clauses, changed = {}, false
+	for clause in string.gmatch(text .. ';', '([^;]*);') do
+		local adapted = AdaptClause(clause, rules, note)
+		if adapted == false then return nil, removed end
+		if adapted ~= clause then changed = true end
+		if adapted then clauses[#clauses + 1] = adapted end
+	end
+	if not changed then return text, removed end
+	local out = string.gsub(table.concat(clauses, ';'), '^%s+', '')
+	if string.gsub(out, '[%s;]', '') == '' then return nil, removed end -- nothing left to say
+	return out, removed
+end
+
+-- the tag of one bracket of a text format, as ElvUI's tag parser names it: '[ - >mMT-level]' -> 'mMT-level',
+-- '[perhp<%]' -> 'perhp', '[name:eltruism:gradientshortcaps{10}]' -> 'name:eltruism:gradientshortcaps'
+function T.TagName(bracket)
+	if type(bracket) ~= 'string' then return nil end
+	local first = string.match(bracket, '^.*>()') or 2
+	local last = (string.match(bracket, '^.-()<') or -1) - 1
+	local name = string.gsub(string.sub(bracket, first, last), '%b{}', '')
+	name = string.gsub(name, '^%[', '')
+	name = string.gsub(name, '%]$', '')
+	if name == '' then return nil end
+	return name
+end
+
+local function SortedKeys(tbl)
+	local keys = {}
+	for k in pairs(tbl) do keys[#keys + 1] = k end
+	table.sort(keys, function(a, b)
+		if type(a) == type(b) and (type(a) == 'number' or type(a) == 'string') then return a < b end
+		return tostring(a) < tostring(b)
+	end)
+	return keys
+end
+
+local function WalkSettings(tbl, path, visit)
+	for _, key in ipairs(SortedKeys(tbl)) do
+		local value = tbl[key]
+		local here = path == '' and tostring(key) or (path .. '.' .. tostring(key))
+		if type(value) == 'table' then
+			WalkSettings(value, here, visit)
+		else
+			visit(tbl, key, value, here, path)
+		end
+	end
+end
+
+-- What a profile names that only the installed client can vouch for: the datatexts in its panels and the
+-- tags in its text formats (each list sorted, each name once).
+function T.ProfileNames(profile)
+	local datatexts, tags, seenD, seenT = {}, {}, {}, {}
+	if type(profile) ~= 'table' then return { datatexts = datatexts, tags = tags } end
+	WalkSettings(profile, '', function(_, key, value, here)
+		if type(value) ~= 'string' or value == '' then return end
+		if string.find(here, '^datatexts%.panels%.') and type(key) == 'number' then
+			if not seenD[value] then seenD[value] = true datatexts[#datatexts + 1] = value end
+		elseif (key == 'text_format' or key == 'format') and string.find(value, '[', 1, true) then
+			for bracket in string.gmatch(value, '%[..-%]+') do
+				local name = T.TagName(bracket)
+				if name and not seenT[name] then seenT[name] = true tags[#tags + 1] = name end
+			end
+		end
+	end)
+	table.sort(datatexts)
+	table.sort(tags)
+	return { datatexts = datatexts, tags = tags }
+end
+
+-- Adapts a Banzai profile table to a client, in place, and reports what it did:
+--   { flavor, changes = { { path, from, to, reason } ... }, notes = { { path, value, reason } ... } }
+-- changes: settings rewritten (to = nil: left out, ElvUI's default stands). notes: nothing was changed,
+-- the installed client simply has nothing registered under that name (`known`, optional:
+-- { datatexts = { [name] = true|false }, tags = { [name] = true|false } }, false = asked and not there).
+-- Deterministic (keys in sorted order) and idempotent; a client without rules is left exactly as it is.
+function T.AdaptProfile(profile, flavor, known)
+	local report = { flavor = flavor, changes = {}, notes = {} }
+	local rules = T.CLIENTS[flavor]
+	if type(profile) ~= 'table' or not rules then return report end
+	known = type(known) == 'table' and known or {}
+	local datatexts, tags = known.datatexts or {}, known.tags or {}
+	local removals = {}
+	WalkSettings(profile, '', function(owner, key, value, here, parent)
+		if type(value) ~= 'string' then return end
+		if key == 'visibility' or string.find(parent, '%.paging$') then
+			local adapted, removed = T.AdaptConditions(value, flavor)
+			if adapted ~= value then
+				local reason = rules.reasons[removed[#removed] or ''] or 'not available on this client'
+				report.changes[#report.changes + 1] = { path = here, from = value, to = adapted, reason = reason }
+				if adapted == nil then removals[#removals + 1] = { owner, key } else owner[key] = adapted end
+			end
+		elseif string.find(here, '^datatexts%.panels%.') and type(key) == 'number' then
+			if value ~= '' and datatexts[value] == false then
+				report.notes[#report.notes + 1] = { path = here, value = value, reason = 'no datatext of this name is registered on this client (the slot stays empty, as ElvUI leaves it)' }
+			end
+		elseif (key == 'text_format' or key == 'format') and string.find(value, '[', 1, true) then
+			for bracket in string.gmatch(value, '%[..-%]+') do
+				local name = T.TagName(bracket)
+				if name and tags[name] == false then
+					report.notes[#report.notes + 1] = { path = here, value = name, reason = 'no tag of this name is registered on this client (ElvUI shows nothing for it)' }
+				end
+			end
+		end
+	end)
+	for _, removal in ipairs(removals) do removal[1][removal[2]] = nil end -- (after the walk: nothing is removed under it)
+	return report
+end
+
 return T

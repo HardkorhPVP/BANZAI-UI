@@ -207,6 +207,11 @@ end
 
 function TIPS.conquest(tt)
 	Title(tt, 'CONQUEST', { 1.00, 0.72, 0.22 })
+	if ns.Flavor and not ns.Flavor.Has('conquest') then
+		Unavailable(tt, 'Conquest')
+		Hint(tt, 'Click: open the PvP window')
+		return
+	end
 	local c = Currency(CONQUEST_ID)
 	if not (c and c.quantity) then
 		Unavailable(tt, 'Conquest')
@@ -231,6 +236,12 @@ function TIPS.conquest(tt)
 end
 
 function TIPS.mastery(tt)
+	if ns.Flavor and not ns.Flavor.Has('mastery') then
+		Title(tt, 'MASTERY', { 0.72, 0.48, 1.00 })
+		Unavailable(tt, 'Mastery')
+		Hint(tt, 'Click: open the character window')
+		return
+	end
 	local mastery, coeff = Call(GetMasteryEffect)
 	Title(tt, 'MASTERY  ' .. (Pct(mastery) or ''), { 0.72, 0.48, 1.00 })
 	if not mastery then Unavailable(tt, 'Mastery') Hint(tt, 'Click: open the character window') return end
@@ -264,6 +275,12 @@ function TIPS.haste(tt)
 end
 
 function TIPS.versatility(tt)
+	if ns.Flavor and not ns.Flavor.Has('versatility') then
+		Title(tt, 'VERSATILITY', { 0.58, 1.00, 0.32 })
+		Unavailable(tt, 'Versatility')
+		Hint(tt, 'Click: open the character window')
+		return
+	end
 	local doneID, takenID = CR_VERSATILITY_DAMAGE_DONE or 29, CR_VERSATILITY_DAMAGE_TAKEN or 31
 	local doneR, takenR = Call(GetCombatRatingBonus, doneID), Call(GetCombatRatingBonus, takenID)
 	local doneV, takenV = Call(GetVersatilityBonus, doneID), Call(GetVersatilityBonus, takenID)
@@ -367,6 +384,29 @@ function TIPS.time(tt)
 end
 
 function TIPS.spec(tt)
+	-- 1.5.0-dev1 (WoW Forever): talent trees, not a specialization - every tree with its committed points,
+	-- the leading one named (the game's own names); role layouts use only verified class/tree mappings
+	local Flavor = ns.Flavor
+	if Flavor and Flavor.IsForever() then
+		local tree, trees = Flavor.TalentTree()
+		Title(tt, tree and ((tree.icon and ('|T' .. tree.icon .. ':16:16:0:0:64:64:5:59:5:59|t ') or '') .. string.upper(tree.name)) or 'TALENT TREES', Theme:PlayerClassColor())
+		if trees then
+			for _, t in ipairs(trees) do Pair(tt, t.name, tostring(t.points)) end
+			if not tree then Note(tt, 'No leading tree (no points spent, or two trees tie): Banzai shows your class only.') end
+		else
+			Note(tt, 'The game has not reported your talents yet.')
+		end
+		local roles = _G.BanzaiRoles
+		local detection = roles and roles.Detection and roles:Detection()
+		if detection then
+			Pair(tt, 'Detected role / Banzai layout', tostring(detection.role or 'unmapped') .. ' / ' .. tostring(detection.layout))
+			Note(tt, tostring(detection.reason) .. '; local override: ' .. tostring(detection.override))
+		end
+		Space(tt)
+		Note(tt, 'WoW Forever has no game-provided spec role. Ambiguous or unmapped trees retain the last layout; use LAYOUT > DPS / HEALER PLACEMENT or /banzai role auto|dps|healer.')
+		Hint(tt, 'Click: open the talent window (Banzai never changes your talents)')
+		return
+	end
 	local index = Call(GetSpecialization)
 	local spec = index and CallAll(GetSpecializationInfo, index) or {}
 	local name, description, icon, role = spec[2], spec[3], spec[4], spec[5]
@@ -395,11 +435,13 @@ end
 
 function TIPS.ilvl(tt)
 	local overall, equipped, pvp = Call(GetAverageItemLevel)
+	local pvpAvailable = not (ns.Flavor and not ns.Flavor.Has('pvpItemLevel'))
 	Title(tt, 'ITEM LEVEL', { 0.62, 0.80, 1.00 })
 	if not equipped then Unavailable(tt, 'Item level') Hint(tt, 'Click: open the character window') return end
 	Pair(tt, 'Equipped', string.format('%.1f', equipped))
 	if overall then Pair(tt, 'Overall (best you own)', string.format('%.1f', overall)) end
-	if pvp and pvp > 0 then Pair(tt, 'PvP (the game\'s PvP item level)', string.format('%.1f', pvp), { 1.00, 0.55, 0.40 })
+	if pvpAvailable and pvp and pvp > 0 then Pair(tt, 'PvP (the game\'s PvP item level)', string.format('%.1f', pvp), { 1.00, 0.55, 0.40 })
+	elseif not pvpAvailable then Pair(tt, 'PvP', 'not available on this client', C.muted)
 	else Pair(tt, 'PvP', 'not reported by the game', C.muted) end
 	local text = _G.STAT_AVERAGE_ITEM_LEVEL_TOOLTIP
 	if type(text) == 'string' then Space(tt) Note(tt, text) end

@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.5.0 - WoW Forever
+
+One BANZAI UI for Retail 12.1.5 and WoW Forever 1.60.1. On Retail nothing changes beyond the version.
+
+**WoW Forever**
+- Added WoW Forever 1.60.1 support ([WOW-FOREVER.md](WOW-FOREVER.md)).
+- Added Forever-aware ElvUI profile adaptation.
+- Added Forever talent-tree handling (the leading tree is shown as the spec).
+- Added flavor-aware Character Sync: a configuration from one client is never written into the other.
+- Added Forever-aware cooldown and PvP capability handling - what the client has no data for is left out.
+- Added Restore Pre-Banzai support for Forever and the prerequisite check `/banzai forever`.
+
+**Window Skins (WoW Forever, [WINDOW-SKINS.md](WINDOW-SKINS.md))**
+- Fixed the Forever Chat tab / layout interaction.
+- Added optional BANZAI skins for supported Blizzard windows.
+- Added optional Zygor skin integration.
+- Added optional Baganator skin integration.
+- Added independent Window Skin toggles.
+
+**Compatibility**
+- Preserved Retail support.
+- Preserved BanzaiSland integration.
+- BANZAI Default remains Shojumaru at 105 %.
+
+**Known / deferred validation**
+- Dedicated healer-role live validation deferred (automatic healer-role adaptation is implemented for Forever but has not yet completed dedicated live healer validation).
+- Dedicated PvP / Arena / Battleground live validation deferred.
+- Own cooldown bars show nothing on Forever yet (no verified spell list).
+
 ## 1.4.0 - first public release
 
 Based on the 1.3.8 line. Release engineering and the final display-font set; no new features.

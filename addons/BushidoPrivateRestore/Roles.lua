@@ -52,6 +52,59 @@ local function Profile()
 	return type(profile) == 'table' and profile or nil
 end
 
+local FOREVER_TREE_ROLES = {
+	DRUID = { [1] = 'DPS', [2] = 'AMBIGUOUS', [3] = 'HEALER' },
+}
+
+function Roles.ClassifyForever(spec, classToken)
+	if type(spec) ~= 'table' or type(spec.index) ~= 'number' then return nil, 'no verified leading talent tree' end
+	local role = FOREVER_TREE_ROLES[classToken] and FOREVER_TREE_ROLES[classToken][spec.index]
+	if role == 'AMBIGUOUS' then return nil, 'ambiguous tree; keep the prior layout or set an override' end
+	if role == 'HEALER' or role == 'DPS' then return role, 'verified class/tree position' end
+	return nil, 'unmapped class/tree; keep the prior layout or set an override'
+end
+
+local function LastLayout()
+	local art = Art()
+	local state = art and art.RoleState and art:RoleState()
+	local active = type(state) == 'table' and state.active
+	return (active == 'DPS' or active == 'HEALER') and active or 'DPS'
+end
+
+function Roles:Override()
+	local art = Art()
+	return art and art.ForeverRoleOverride and art:ForeverRoleOverride() or 'AUTO'
+end
+
+function Roles:SetOverride(value)
+	if not (ns.Flavor and ns.Flavor.IsForever()) then return false, 'Role overrides are only available on WoW Forever.' end
+	value = type(value) == 'string' and string.upper(value) or ''
+	if value ~= 'AUTO' and value ~= 'DPS' and value ~= 'HEALER' then
+		return false, 'Use /banzai role auto, dps, or healer.'
+	end
+	local art = Art()
+	if not (art and art.ForeverRoleOverride) then return false, 'Banzai Art is not ready.' end
+	art:ForeverRoleOverride(value)
+	local role = self.Current() or 'DPS'
+	self:Apply(role, 'manual role override')
+	return true, 'Forever role override: ' .. value .. ' (layout ' .. role .. ').'
+end
+
+function Roles:Detection()
+	local spec = ns.Flavor and ns.Flavor.IsForever() and ns.Flavor.PlayerSpec() or nil
+	if not (ns.Flavor and ns.Flavor.IsForever()) then return nil end
+	local _, classToken = UnitClass('player')
+	local detected, reason = self.ClassifyForever(spec, classToken)
+	local override = self:Override()
+	local layout
+	if override == 'DPS' or override == 'HEALER' then
+		layout, reason = override, 'explicit local override'
+	else
+		layout = detected or LastLayout()
+	end
+	return { tree = spec and spec.name, index = spec and spec.index, class = classToken, role = detected, layout = layout, reason = reason, override = override }
+end
+
 local function Applied()
 	local E = Engine()
 	local key = E and E.mynameRealm
@@ -66,6 +119,17 @@ end
 
 -- this character's specialization and the layout its role uses (nil before the game knows it)
 function Roles.Spec()
+	-- Forever exposes talent trees rather than specialization roles. Use only
+	-- the supported class/tree-position map; ambiguous or unmapped trees retain
+	-- the character's last layout until Darren chooses a local override.
+	local Flavor = ns.Flavor
+	if Flavor and Flavor.IsForever() then
+		local spec = Flavor.PlayerSpec()
+		if not spec then return nil end
+		local detection = Roles:Detection()
+		return { id = nil, name = spec.name, icon = spec.icon, role = detection and detection.layout, layout = T.LayoutRole(detection and detection.layout),
+			source = spec.source, points = spec.points, treeIndex = spec.index, roleReason = detection and detection.reason }
+	end
 	local index = GetSpecialization and GetSpecialization()
 	if type(index) ~= 'number' or IsSecret(index) or index < 1 then return nil end
 	local id, name, _, icon, role = GetSpecializationInfo(index)

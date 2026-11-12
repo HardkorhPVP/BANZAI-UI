@@ -1,6 +1,6 @@
 # BANZAI UI
 
-**Version 1.4.0** - World of Warcraft Retail (Interface 120105).
+**Version 1.5.0** - World of Warcraft Retail 12.1.5 (Interface 120105) and WoW Forever 1.60.1 (Interface 16001). One package for both clients; WoW Forever specifics: [WOW-FOREVER.md](WOW-FOREVER.md).
 
 BANZAI UI is a complete ElvUI-based look for World of Warcraft: a bamboo construction around chat, meters, minimap and buffs, a green -> emerald -> violet -> purple identity gradient on every frame, and Darren's original class identity artwork for all thirteen classes. It installs as two addons:
 
@@ -13,12 +13,12 @@ BANZAI UI is a complete ElvUI-based look for World of Warcraft: a bamboo constru
 
 - **ElvUI** - required.
 - **JiberishMedia** - required. Separate download under its own licence; it is **not** included in this zip.
-- Optional (used when installed, never required): Details!, ElvUI_mMediaTag + !mMT_MediaPack, ElvUI_EltreumUI (Eltruism), JiberishIcons, !KalielsTracker, MinimapButtonButton.
+- Optional (used when installed, never required): Details!, ElvUI_mMediaTag + !mMT_MediaPack, ElvUI_EltreumUI (Eltruism), JiberishIcons, BanzaiSland, !KalielsTracker, MinimapButtonButton; on WoW Forever also Zygor Guides Viewer and Baganator for their optional [window skins](WINDOW-SKINS.md).
 
 ## Install
 
 1. Close World of Warcraft.
-2. Extract the zip into `World of Warcraft\_retail_\Interface\AddOns\` - you get `BushidoPrivateCompat` and `BushidoPrivateRestore`.
+2. Extract the zip into `World of Warcraft\_retail_\Interface\AddOns\` (Retail) or `World of Warcraft\_forever_\Interface\AddOns\` (WoW Forever) - you get `BushidoPrivateCompat` and `BushidoPrivateRestore`.
 3. Install ElvUI and JiberishMedia separately if you do not have them.
 4. Start the game and make sure **Banzai**, **Banzai Art**, **ElvUI** and **JiberishMedia** are ticked in the AddOns list.
 5. Log in. Details: [INSTALLATION.md](INSTALLATION.md).
@@ -42,7 +42,8 @@ To go back at any time: **BACKUP & RESTORE** > **Restore pre-Banzai settings**, 
 | [Getting started](GETTING-STARTED.md) | [Materials](MATERIALS.md) | [BANZAI SPLIT](SPLIT.md) | [Details](DETAILS.md) | [Master Character](MASTER-CHARACTER.md) |
 | [FAQ](FAQ.md) | [Fonts](FONTS.md) | [PvP](PVP.md) | [Buffs](BUFFS.md) | [Restore Pre-Banzai](RESTORE-PRE-BANZAI.md) |
 | [Troubleshooting](TROUBLESHOOTING.md) | [AFK screen](AFK.md) | [Action bars](ACTION-BARS.md) | [Objectives](OBJECTIVES.md) | [Changelog](CHANGELOG.md) |
-| [Support](SUPPORT.md) | | [Cast history](CAST-HISTORY.md) | [Minimap](MINIMAP.md) | [Credits](CREDITS.md) |
+| [Support](SUPPORT.md) | [Window skins](WINDOW-SKINS.md) | [Cast history](CAST-HISTORY.md) | [Minimap](MINIMAP.md) | [Credits](CREDITS.md) |
+| [WoW Forever](WOW-FOREVER.md) | | | | |
 
 ## Where it comes from
 

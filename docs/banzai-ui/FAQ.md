@@ -37,7 +37,7 @@ With the Banzai tracker on, Kaliel's is hidden through its own visibility settin
 No. BanzaiSland is a separate addon. With both installed the integrated BANZAI SLAND launcher opens either addon's settings and BANZAI UI's small wordmark steps aside.
 
 **Does it work on WoW Forever?**
-This release is for Retail (Interface 120105) only.
+Yes, from 1.5.0: the same package installs on Retail 12.1.5 and on WoW Forever 1.60.1. See [WOW-FOREVER.md](WOW-FOREVER.md) for what is adapted there and what is still to be validated in live play (the healer layout, PvP).
 
 **Is this JiberishUI?**
 BANZAI UI grew out of a private restoration of the JiberishUI Shinto/Bushido look and is published with the permission Darren established with its original author. The original author does not endorse, support or maintain BANZAI UI; please do not contact JiberishUI about it.

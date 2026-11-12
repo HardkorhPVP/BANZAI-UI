@@ -428,6 +428,18 @@ EventRegistry = {
 	TriggerEvent = function(_, event, ...) for _, cb in ipairs(HK_REGISTRY[event] or {}) do cb.fn(cb.owner, ...) end end,
 }
 
+-- 1.5.0-dev1: the client. HK_FLAVOR = 'forever' (set by tests/run.js for the Forever suites) is WoW Forever
+-- 1.60.1 as the installed client and Blizzard's own interface code show it; anything else is Retail 12.1.5.
+WOW_PROJECT_MAINLINE, WOW_PROJECT_CAMELOT = 1, 18
+WOW_PROJECT_ID = (HK_FLAVOR == 'forever') and WOW_PROJECT_CAMELOT or WOW_PROJECT_MAINLINE
+if HK_FLAVOR == 'forever' then
+	function GetBuildInfo() return '1.60.1', '70862', 'Nov 3 2026', 16001 end
+	-- Blizzard_DeprecatedSpecialization (AllowLoadGameType: classic, standard) is not loaded: these globals do not exist
+	GetSpecialization, GetSpecializationInfo = nil, nil
+else
+	function GetBuildInfo() return '12.1.5', '69848', 'Oct 20 2026', 120105 end
+end
+
 -- load the addon files like the client does
 HK_NS = {}
 for _, file in ipairs(HK_FILES) do
@@ -663,4 +675,52 @@ function Methods:IsVisible()
 		f = f.parent
 	end
 	return true
+end
+
+-- 1.5.0-dev1: WoW Forever (HK_FLAVOR = 'forever'). What differs from Retail, each from the installed client:
+--   no C_PetBattles; no conquest currency; C_SpecializationInfo answers, but its selected "specialization" is a
+--   starter ID, not the talent-tree result (HK_STARTER_CALLS counts every read: Banzai must never show it);
+--   talents are a trait configuration with one group per tree (C_Traits), the points spent per group
+if HK_FLAVOR == 'forever' then
+	C_PetBattles = nil
+	HK_CURRENCY[1602] = nil
+	HK_STARTER_CALLS = 0
+	HK_SPEC_GROUP, HK_CONFIGS = 1, { [1] = 501 }
+	C_SpecializationInfo = {
+		GetSpecialization = function() HK_STARTER_CALLS = HK_STARTER_CALLS + 1 return 1 end,
+		GetSpecializationInfo = function() HK_STARTER_CALLS = HK_STARTER_CALLS + 1 return 9999, 'STARTER', '', 134400, 'DAMAGER' end,
+		GetInspectSpecialization = function() HK_STARTER_CALLS = HK_STARTER_CALLS + 1 return 9999 end,
+		GetSpecializationMasterySpells = function() return {} end,
+		GetActiveSpecGroup = function() return HK_SPEC_GROUP end,
+		GetCombatConfigIDForSpecGroup = function(group) return HK_CONFIGS[group] end,
+	}
+	function GetInspectSpecialization() HK_STARTER_CALLS = HK_STARTER_CALLS + 1 return 9999 end
+	function GetSpecializationInfoByID(id) if id == 9999 then HK_STARTER_CALLS = HK_STARTER_CALLS + 1 return 9999, 'STARTER', '', 134400, 'DAMAGER', 'DRUID' end return id, HK_SPEC_BY_ID[id], '', 0, nil, HK_SPEC_CLASS[id] end
+	-- Darren's druid: Balance 0, Feral Combat 31, Restoration 20 (the game's order is orderIndex, not the list order)
+	HK_TALENTS = { staged = false, treeID = 77, trees = {
+		{ groupID = 13, displayName = 'Restoration', icon = 136041, orderIndex = 3, spent = 20 },
+		{ groupID = 11, displayName = 'Balance', icon = 136096, orderIndex = 1, spent = 0 },
+		{ groupID = 12, displayName = 'Feral Combat', icon = 132115, orderIndex = 2, spent = 31 },
+	} }
+	C_Traits = {
+		GetConfigInfo = function(id) if id == 501 then return { ID = 501, name = 'Talents', treeIDs = { HK_TALENTS.treeID } } end end,
+		ConfigHasStagedChanges = function() return HK_TALENTS.staged end,
+		GetGroupDisplayInfoByTreeID = function(treeID)
+			if treeID ~= HK_TALENTS.treeID then return nil end
+			local out = {}
+			for _, t in ipairs(HK_TALENTS.trees) do out[#out + 1] = { groupID = t.groupID, treeID = treeID, skillLineID = 0, orderIndex = t.orderIndex, displayName = t.displayName, icon = t.icon } end
+			return out
+		end,
+		GetGroupCurrencyInfo = function(configID, groupIDs)
+			if configID ~= 501 then return nil end
+			local out = {}
+			for _, id in ipairs(groupIDs) do
+				for _, t in ipairs(HK_TALENTS.trees) do
+					if t.groupID == id then out[#out + 1] = { traitNodeGroupID = id, currencyInfos = { { traitCurrencyID = 1, quantity = 0, spent = t.spent } } } end
+				end
+			end
+			return out
+		end,
+	}
+	C_ClassTalents.GetActiveConfigID = function() return 501 end
 end

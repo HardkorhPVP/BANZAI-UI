@@ -5,7 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-const ASSESSMENT = 'C:\\Users\\DarrenSteinke\\Desktop\\HARDKORHUI-Bushido-Assessment';
+const ASSESSMENT = require('./local').REFERENCES; // the folder with the two pinned upstream clones (tools/fetch-references.js makes it)
 const BUSHIDO_REPO = path.join(ASSESSMENT, 'JiberishUI_Bushido');
 const JIBERISHMEDIA_REPO = path.join(ASSESSMENT, 'JiberishMedia');
 const BUSHIDO_COMMIT = '624839aa2d632d97868249d77360d603c7cac3f7';

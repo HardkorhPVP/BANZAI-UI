@@ -70,7 +70,9 @@ local _, ns = ...
 local Theme = {}
 ns.Theme = Theme
 
-Theme.VERSION = '1.4.0'
+Theme.VERSION = '1.5.0'
+-- 1.5.0-dev1: a "-dev" build is a private proof (the AFK screen, the BANZAI settings and /banzai status say so)
+Theme.CHANNEL = string.find(Theme.VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 Theme.MEDIA = 'Interface\\AddOns\\BushidoPrivateCompat\\media\\'
 Theme.WHITE = 'Interface\\Buttons\\WHITE8X8'
 
@@ -181,7 +183,14 @@ Theme.DEFAULTS = {
 	splitCastBar = true,        -- the bamboo cast bar above the Player / Target (off: the spell icon in the hub alone; a reload moves the class bar)
 	splitCastName = true,       -- the spell name on it
 	splitCastTimer = true,      -- the remaining time on it
+	-- 1.5.0-dev3 BANZAI > APPEARANCE > WINDOW SKINS (Skins.lua; WoW Forever only in this proof). Details and Chat
+	-- are BANZAI's own frames: their switches there are detailsFrame / chatFrame above.
+	skinBlizzard = true,        -- the BANZAI surface on the game's own windows (Character, Spellbook, Talents, Quest Log, Merchant ...)
+	skinBaganator = true,       -- ... on Baganator's bag / bank windows (when Baganator is installed)
+	skinZygor = true,           -- ... on the Zygor guide viewer (when Zygor is installed)
+	skinElvUI = false,          -- ElvUI's own translucent panels in the BANZAI tone (off: ElvUI's colour, the approved look)
 }
+Theme.SKIN_KEYS = { 'skinBlizzard', 'skinBaganator', 'skinZygor', 'skinElvUI' }
 Theme.ACTION_STYLES = { 'SQUARE', 'CIRCLE', 'ELVUI' }
 Theme.BUFFS_POSITION = { min = 26, maxX = 900, maxY = 600 } -- min: the bamboo ends stay on screen
 Theme.PANEL_BORDERS = { 'CLASS', 'BANZAI', 'HARDKORH' }
@@ -331,6 +340,9 @@ function Theme:DB(key)
 	end
 	for key, range in pairs(self.SPLIT_LIMITS) do
 		db[key] = math.max(range[1], math.min(range[2], tonumber(db[key]) or range[3]))
+	end
+	for _, key in ipairs(self.SKIN_KEYS) do -- 1.5.0-dev3: a switch is on or off; anything else is its default
+		if type(db[key]) ~= 'boolean' then db[key] = self.DEFAULTS[key] end
 	end
 	return db
 end

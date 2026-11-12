@@ -10,7 +10,7 @@ const { lua, lauxlib, lualib, to_luastring, to_jsstring } = require('fengari');
 const ROOT = path.join(__dirname, '..');
 const DIST = path.join(ROOT, 'dist');
 
-function runLua(files, testFile) {
+function runLua(files, testFile, flavor) {
   const L = lauxlib.luaL_newstate();
   lualib.luaL_openlibs(L);
   const q = (s) => JSON.stringify(s.replace(/\\/g, '/'));
@@ -18,6 +18,7 @@ function runLua(files, testFile) {
   const texDir = path.join(DIST, 'JiberishMedia', 'textures');
   const textures = fs.existsSync(texDir) ? fs.readdirSync(texDir).filter((f) => /\.tga$/i.test(f)).map((f) => f.replace(/\.tga$/i, '')) : [];
   const prelude = [
+    `HK_FLAVOR = ${JSON.stringify(flavor || 'retail')}`, // 1.5.0-dev1: the client the mocks stand in for (retail | forever)
     `HK_TEXTURES = { ${textures.map((t) => `[${JSON.stringify(t)}] = true`).join(', ')} }`,
     `HK_FILES = { ${files.map(q).join(', ')} }`,
     `HK_DIST = ${q(DIST)}`,
@@ -39,6 +40,13 @@ const tocFiles = (addon) => fs.readFileSync(path.join(DIST, addon, addon + '.toc
 const suites = [
   { file: 'test_restore.lua', addon: 'BushidoPrivateRestore', files: tocFiles('BushidoPrivateRestore') },
   { file: 'test_compat.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat') },
+  // 1.5.0-dev1: the client adapter on Retail (pure functions, no Retail change) and both addons on WoW Forever
+  { file: 'test_client.lua', addon: 'BushidoPrivateRestore', files: tocFiles('BushidoPrivateRestore') },
+  { file: 'test_forever_restore.lua', addon: 'BushidoPrivateRestore', files: tocFiles('BushidoPrivateRestore'), flavor: 'forever' },
+  { file: 'test_forever_compat.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat'), flavor: 'forever' },
+  // 1.5.0-dev3: the Forever chat adapter and the window skins (Banzai Art on WoW Forever), and the same files on Retail
+  { file: 'test_forever_skins.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat'), flavor: 'forever' },
+  { file: 'test_retail_skins.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat') },
 ];
 
 let passed = 0;
@@ -52,6 +60,13 @@ if (!only || only === 'icons') {
   console.log(`${result.failed ? 'FAIL' : 'ok  '} test_icons.js  (${result.passed} passed, ${result.failed} failed)`);
   if (result.output) console.log(result.output.split('\n').map((l) => '     ' + l).join('\n'));
 }
+if (!only || only === 'release') {
+  const result = require('./test_release').run(); // 1.5.0: the package scan, the client metadata and the publish mapping (node)
+  passed += result.passed;
+  failed += result.failed;
+  console.log(`${result.failed ? 'FAIL' : 'ok  '} test_release.js  (${result.passed} passed, ${result.failed} failed)`);
+  if (result.output) console.log(result.output.split('\n').map((l) => '     ' + l).join('\n'));
+}
 if (!only || only === 'parchment') {
   const result = require('./test_parchment').run(); // 1.3.7: the parchment material (node + the built layout in a Lua VM)
   passed += result.passed;
@@ -62,7 +77,7 @@ if (!only || only === 'parchment') {
 for (const suite of suites) {
   if (only && !suite.file.includes(only)) continue;
   const files = suite.files.map((f) => path.join(DIST, suite.addon, f));
-  const result = runLua(files, path.join(__dirname, suite.file));
+  const result = runLua(files, path.join(__dirname, suite.file), suite.flavor);
   passed += result.passed;
   failed += result.failed;
   console.log(`${result.failed ? 'FAIL' : 'ok  '} ${suite.file}  (${result.passed} passed, ${result.failed} failed)`);

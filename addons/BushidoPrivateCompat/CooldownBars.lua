@@ -95,6 +95,7 @@ CB.SPELLS = {
 		defensive = { { 363916 }, { 374348 }, { 357170 }, { 374227 } },
 	},
 }
+CB.SPELLS_FOREVER = {} -- no Forever spell-ID mappings have been verified; never reuse Retail IDs
 -- the preview: SAMPLE bars (icons and names only, nothing read from the game)
 CB.SAMPLE = {
 	offensive = { { 'Celestial Alignment', 'Spell_Nature_Natureguardian', 0.72, '92' }, { 'Convoke the Spirits', 'Ability_Ardenweald_Druid', 0.40, '48' }, { 'Force of Nature', 'Ability_Druid_ForceofNature', 0.15, '9' } },
@@ -138,7 +139,8 @@ end
 function CB:Candidates(kind)
 	local list = {}
 	local class = CB.Class()
-	for _, entry in ipairs((CB.SPELLS[class] or {})[kind] or {}) do
+	local catalog = ns.Flavor and ns.Flavor.IsForever() and CB.SPELLS_FOREVER or CB.SPELLS
+	for _, entry in ipairs((catalog[class] or {})[kind] or {}) do
 		for _, id in ipairs(entry) do
 			if CB.Known(id) then
 				list[#list + 1] = id
@@ -147,6 +149,11 @@ function CB:Candidates(kind)
 		end
 	end
 	return list
+end
+
+function CB:MappingReport()
+	if ns.Flavor and ns.Flavor.IsForever() then return 'no spell IDs verified; no Retail cooldowns are shown' end
+	return 'Retail spell-ID catalog'
 end
 
 local function Count(kind)

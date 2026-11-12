@@ -15,6 +15,10 @@ The chat sits in a bamboo-framed panel **flush with the left edge of the screen*
 - With the frame off, the chat stays where BANZAI placed it without a panel.
 - The panel takes the material exactly like Details, the minimap and the BUFFS panel; a parchment chat keeps bright, outlined text.
 
+## WoW Forever
+
+ElvUI's installer there leaves a second, undocked chat window ("Loot / Trade"). Lying inside the Banzai chat frame it would cover General, so BANZAI docks it as a tab of the General window (the same as dragging its tab onto the dock) and keeps General in the frame. A window floating anywhere else, a whisper window and the combat log are left alone. **Restore pre-Banzai settings**, or switching the Banzai chat frame off, puts the window back where it was.
+
 ## Not changed
 
 Chat channels, tabs, chat history, chat settings in ElvUI other than the backdrop and position, and any chat addon's behaviour.

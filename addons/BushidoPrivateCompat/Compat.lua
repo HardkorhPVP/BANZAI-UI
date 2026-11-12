@@ -94,6 +94,7 @@ local Compat = {}
 ns.Compat = Compat
 _G.BanzaiCompat = Compat -- options page and /banzai (BushidoPrivateRestore) talk to this
 Compat.Theme = Theme
+Compat.Flavor = ns.Flavor -- 1.5.0-dev1: the client adapter (shared/Flavor.lua)
 Compat.VERSION = Theme.VERSION
 
 -- 1.1.0 bamboo frame geometry (the same numbers as tools/lib/panel.js PANEL,
@@ -226,6 +227,7 @@ local function Rect(region)
 	end
 	return l * scale, b * scale, w * scale, h * scale
 end
+Compat.Rect = Rect -- 1.5.0-dev3: ChatLayout.lua and Skins.lua measure with the same rule
 
 ---------------------------------------------------------------------------
 -- Building blocks
@@ -678,6 +680,111 @@ function Compat:BuildMinimap(map)
 	self.minimapFrame = frame
 	self:UpdateZone()
 	return frame
+end
+
+function Compat.MinimapButtonLayout(mapSize, count, preferredSize)
+	if type(mapSize) ~= 'number' or mapSize < 50 or type(count) ~= 'number' or count < 1 then return nil end
+	local columns = math.min(2, math.floor(count))
+	local rows = math.ceil(count / columns)
+	local gap, padding = 2, 4
+	local size = math.floor(math.min(preferredSize or 24,
+		(mapSize - 2 * padding - (columns + 1) * gap) / columns,
+		(mapSize - 2 * padding - (rows + 1) * gap) / rows))
+	if size < 8 then return nil end
+	local positions = {}
+	for index = 1, count do
+		local column, row = (index - 1) % columns, math.floor((index - 1) / columns)
+		positions[index] = {
+			size = size,
+			x = -(padding + gap + column * (size + gap)),
+			y = -(padding + gap + row * (size + gap)),
+		}
+	end
+	return positions, columns * (size + gap) + gap, rows * (size + gap) + gap
+end
+
+-- 1.5.0-dev3: a dedicated minimap-button addon owns the buttons (their collection and their places). While
+-- one is loaded, the dev2 containment of Eltruism's button bar does nothing at all - BANZAI owns the minimap
+-- frame, its border and its look, never the buttons. Without one, dev2's behaviour is unchanged.
+Compat.MINIMAP_BUTTON_MANAGERS = { 'MinimapButtonButton' }
+function Compat.MinimapButtonManager()
+	local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+	if not loaded then return nil end
+	for _, name in ipairs(Compat.MINIMAP_BUTTON_MANAGERS) do
+		if loaded(name) then return name end
+	end
+	return nil
+end
+
+function Compat:LayoutMinimapButtonBar()
+	local owner = Compat.MinimapButtonManager()
+	if owner then
+		self.minimapButtonsPending = nil
+		return false, 'left to ' .. owner
+	end
+	if InCombatLockdown() then
+		self.minimapButtonsPending = true
+		return false, 'waiting (combat)'
+	end
+	local map, bar = _G.Minimap, _G.EltruismMinimapButtonBar
+	if not (map and bar and bar.GetChildren and bar.SetPoint and bar.SetSize) then return false, 'Eltruism button bar unavailable' end
+	if (map.IsForbidden and map:IsForbidden()) or (bar.IsForbidden and bar:IsForbidden()) then return false, 'forbidden frame' end
+	local children = { bar:GetChildren() }
+	local buttons = {}
+	for _, button in ipairs(children) do
+		if button and button.EltruismInBar and (not button.IsForbidden or not button:IsForbidden()) and (not button.IsShown or button:IsShown()) then
+			buttons[#buttons + 1] = button
+		end
+	end
+	table.sort(buttons, function(a, b)
+		local an = (a.GetName and a:GetName()) or a.name or ''
+		local bn = (b.GetName and b:GetName()) or b.name or ''
+		return an < bn
+	end)
+	if #buttons == 0 then return true, 'no visible addon buttons' end
+	local mapSize = map:GetWidth()
+	local layout, width, height = Compat.MinimapButtonLayout(mapSize, #buttons, buttons[1]:GetWidth())
+	if not layout then return false, 'button group does not fit the minimap' end
+	bar:ClearAllPoints()
+	bar:SetSize(width, height)
+	bar:SetPoint('TOPRIGHT', map, 'TOPRIGHT', -4, -4)
+	for index, button in ipairs(buttons) do
+		local position = layout[index]
+		button:ClearAllPoints()
+		button:SetSize(position.size, position.size)
+		button:SetPoint('TOPRIGHT', bar, 'TOPRIGHT', position.x, position.y)
+	end
+	self.minimapButtonsPending = nil
+	return true, 'contained within the minimap border'
+end
+
+function Compat:RefreshMinimapButtonBar()
+	if not (ns.Flavor and ns.Flavor.IsForever()) then return end
+	if Compat.MinimapButtonManager() then -- 1.5.0-dev3: the button addon's business; Eltruism's bar is not driven from here
+		self.minimapButtonsPending = nil
+		return
+	end
+	if InCombatLockdown() then
+		self.minimapButtonsPending = true
+		return
+	end
+	local manager = _G.ElvUI_EltreumUI
+	if not (self.minimapFrame and Active() and Theme:DB().minimapFrame and _G.EltruismMinimapButtonBar) then
+		if manager and manager.UpdateMinimapButtonBar then manager:UpdateMinimapButtonBar() end
+		return
+	end
+	if manager and manager.UpdateMinimapButtonBar then manager:UpdateMinimapButtonBar() end
+	self:LayoutMinimapButtonBar()
+end
+
+function Compat:HookMinimapButtonBar()
+	local manager = _G.ElvUI_EltreumUI
+	if self.minimapButtonHooked or not (manager and type(manager.UpdateMinimapButtonBar) == 'function' and hooksecurefunc) then return false end
+	hooksecurefunc(manager, 'UpdateMinimapButtonBar', function()
+		if ns.Flavor and ns.Flavor.IsForever() and Compat.minimapFrame and Active() and Theme:DB().minimapFrame and not Compat.MinimapButtonManager() then Compat:LayoutMinimapButtonBar() end
+	end)
+	self.minimapButtonHooked = true
+	return true
 end
 
 -- the frame follows the border scale (its stalk thickness changes the size)
@@ -1294,6 +1401,16 @@ function Compat:RoleState()
 	return db.roleState
 end
 
+function Compat:ForeverRoleOverride(value)
+	local db = Theme:DB()
+	if value ~= nil then
+		if value == 'AUTO' then db.foreverRoleOverride = nil else db.foreverRoleOverride = value end
+	elseif db.foreverRoleOverride ~= 'DPS' and db.foreverRoleOverride ~= 'HEALER' then
+		db.foreverRoleOverride = nil
+	end
+	return db.foreverRoleOverride or 'AUTO'
+end
+
 function Compat:ApplyTheme()
 	for _, paint in ipairs(painters) do paint() end
 end
@@ -1391,6 +1508,7 @@ function Compat:Refresh()
 		self:UpdateZone()
 		self:UpdateMinimapMask()
 	end
+	self:RefreshMinimapButtonBar()
 	if self.chatFrame then
 		self:PlaceChat()
 		self.chatFrame:SetShown(active and db.chatFrame and true or false)
@@ -1413,6 +1531,17 @@ function Compat:Refresh()
 	-- 1.0.0: the tooltip glass and the AFK screen follow a profile switch at once (Backup & Restore)
 	if ns.Tooltip and ns.Tooltip.Refresh then ns.Tooltip:Refresh() end
 	if ns.AFK and ns.AFK.Refresh then ns.AFK:Refresh() end
+	-- 1.5.0-dev3: the Forever chat windows inside the chat frame, and the optional window skins. Each on its
+	-- own: a failure in one never reaches the HUD above (the reason is kept for /banzai forever).
+	-- (not on a group / arena roster change: that rebuild is about unit frames only - the chat windows and the
+	-- skinned windows have nothing to do with who joined, and a window that shows is looked at then anyway)
+	for _, name in ipairs({ 'ChatLayout', 'Skins' }) do
+		local module = ns[name]
+		if module and module.Refresh and not self.rosterBuild then
+			local ok, err = pcall(module.Refresh, module)
+			if not ok then module.lastError = tostring(err) end
+		end
+	end
 end
 
 function Compat:Counts()
@@ -1429,7 +1558,7 @@ end
 -- Events
 ---------------------------------------------------------------------------
 local frame = CreateFrame('Frame')
-local events = { 'PLAYER_ENTERING_WORLD', 'PLAYER_REGEN_DISABLED', 'PLAYER_REGEN_ENABLED', 'GROUP_ROSTER_UPDATE', 'ARENA_OPPONENT_UPDATE',
+local events = { 'ADDON_LOADED', 'PLAYER_ENTERING_WORLD', 'PLAYER_REGEN_DISABLED', 'PLAYER_REGEN_ENABLED', 'GROUP_ROSTER_UPDATE', 'ARENA_OPPONENT_UPDATE',
 	'PLAYER_SPECIALIZATION_CHANGED', 'ZONE_CHANGED', 'ZONE_CHANGED_INDOORS', 'ZONE_CHANGED_NEW_AREA' }
 for _, event in ipairs(events) do pcall(frame.RegisterEvent, frame, event) end
 
@@ -1442,8 +1571,11 @@ local function SafeRefresh(module)
 end
 
 frame:SetScript('OnEvent', function(_, event)
-	if event == 'PLAYER_ENTERING_WORLD' then
+	if event == 'ADDON_LOADED' then
+		Compat:HookMinimapButtonBar()
+	elseif event == 'PLAYER_ENTERING_WORLD' then
 		C_Timer.After(1, function()
+			Compat:HookMinimapButtonBar()
 			local E = Engine()
 			if E and E.data and E.data.RegisterCallback and not Compat.callbacks then
 				Compat.callbacks = true
@@ -1457,7 +1589,12 @@ frame:SetScript('OnEvent', function(_, event)
 			for _, name in ipairs(MODULES) do SafeRefresh(ns[name]) end
 		end)
 		-- Details windows open / move a little later (profile switch and Banzai layout at login)
-		C_Timer.After(5, function() Compat:PlaceDetails(Active()) Compat:UpdateMinimapMask() end)
+		C_Timer.After(5, function()
+			Compat:PlaceDetails(Active())
+			Compat:UpdateMinimapMask()
+			-- 1.5.0-dev3: once more after ElvUI has placed its chat windows and the meters are in place
+			if ns.ChatLayout then pcall(ns.ChatLayout.Refresh, ns.ChatLayout, 'login') end
+		end)
 		C_Timer.After(10, function() Compat:PlaceDetails(Active()) end)
 	elseif event == 'PLAYER_REGEN_DISABLED' then
 		Compat.inCombat = true
@@ -1465,9 +1602,17 @@ frame:SetScript('OnEvent', function(_, event)
 	elseif event == 'PLAYER_REGEN_ENABLED' then
 		Compat.inCombat = false
 		if pending then Compat:Build() end
+		if Compat.minimapButtonsPending then Compat:RefreshMinimapButtonBar() end
 		Compat:UpdateBranding()
 	elseif event == 'GROUP_ROSTER_UPDATE' or event == 'ARENA_OPPONENT_UPDATE' then
-		if InCombatLockdown() then pending = true else Compat:Build() end
+		if InCombatLockdown() then
+			pending = true
+		else
+			Compat.rosterBuild = true -- 1.5.0-dev3: unit frames only (see Compat:Refresh)
+			local ok, err = pcall(Compat.Build, Compat)
+			Compat.rosterBuild = nil
+			if not ok then error(err, 0) end -- (the flag never outlives the build; the error is raised as before)
+		end
 	elseif event == 'PLAYER_SPECIALIZATION_CHANGED' then
 		if Theme:DB().theme == 'CLASS' or Theme:DB().panelBorder == 'CLASS' then RefreshAll(Compat) end
 	elseif event == 'ZONE_CHANGED' or event == 'ZONE_CHANGED_INDOORS' or event == 'ZONE_CHANGED_NEW_AREA' then

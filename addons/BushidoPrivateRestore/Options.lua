@@ -182,10 +182,38 @@ function Options.ReplacementText(kind)
 end
 
 local function SpecName()
+	-- 1.5.0-dev1 (WoW Forever): the leading talent tree with its points; Retail: the specialization, as before
+	local Flavor = ns.Flavor
+	if Flavor and Flavor.IsForever() then
+		local spec = Flavor.PlayerSpec()
+		return spec and (spec.name .. (spec.points and ('  (' .. spec.points .. ')') or '')) or '-'
+	end
 	local index = GetSpecialization and GetSpecialization()
 	if not index then return '-' end
 	local _, name = GetSpecializationInfo(index)
 	return name or '-'
+end
+
+-- 1.5.0-dev1: the client Banzai runs in, its prerequisites as Banzai really uses them, and the client adapter's
+-- last report (the same lines as /banzai forever)
+local STATE_COLORS = { READY = EMERALD, ['ON DEMAND'] = EMERALD, MISSING = { 1, 0.3, 0.3 }, ['NOT READY'] = { 1, 0.3, 0.3 }, ['NOT INSTALLED'] = { 1, 0.8, 0.2 } }
+function Options.ClientText()
+	local R = ns.Restore
+	if not (R and R.Preflight) then return '' end
+	local pre = R:Preflight()
+	local lines = { Muted('CLIENT') .. '   ' .. Color(pre.client, { 1, 1, 1 }) }
+	for _, item in ipairs(pre.items) do
+		lines[#lines + 1] = string.format('%s   %s   %s%s', Color(item.name, { 1, 1, 1 }), Color(item.state, STATE_COLORS[item.state] or { 1, 1, 1 }),
+			Muted(item.version and ('v' .. tostring(item.version):gsub('^v', '')) or ''), item.detail and ('   ' .. Color(item.detail, { 1, 0.8, 0.2 })) or '')
+	end
+	lines[#lines + 1] = pre.blocked and Color('BLOCKED: ' .. pre.blocked .. ' - Banzai will not apply.', { 1, 0.3, 0.3 }) or Color('Every required component is ready.', EMERALD)
+	local state = _G.BushidoPrivateRestoreDB and _G.BushidoPrivateRestoreDB.client
+	local report = type(state) == 'table' and state.report
+	if type(report) == 'table' then
+		lines[#lines + 1] = Muted(string.format('Client adapter at the last apply (%s): %d setting(s) adapted, %d name(s) this client does not register. /banzai forever lists them.',
+			tostring(report.time), #report.changes, #report.notes))
+	end
+	return table.concat(lines, '\n')
 end
 
 function Options.HomeText()
@@ -197,12 +225,15 @@ function Options.HomeText()
 	local classColor = (art and art.Theme and art.Theme:ClassColor(classFile)) or { 1, 1, 1 }
 	local _, active, total = Options.ComponentLines()
 	local master = ns.Sync and ns.Sync:Master()
+	local Flavor = ns.Flavor
+	local forever = Flavor and Flavor.IsForever()
 	local lines = {
-		Muted('VERSION') .. '   ' .. Color('BANZAI ' .. tostring(ns.VERSION), EMERALD) .. '   ' .. Muted('release'),
+		Muted('VERSION') .. '   ' .. Color('BANZAI ' .. tostring(ns.VERSION), EMERALD) .. '   ' .. Muted(ns.CHANNEL or 'release'),
+		Muted('CLIENT') .. '   ' .. tostring(Flavor and Flavor.ClientText() or 'Retail'),
 		Muted('CHARACTER') .. '   ' .. tostring(E and E.mynameRealm or UnitName('player')),
 		Muted('CLASS') .. '   ' .. Color(tostring(className or '-'), classColor),
-		Muted('SPECIALIZATION') .. '   ' .. Color(tostring(SpecName()), classColor),
-		Muted('SPEC ROLE') .. '   ' .. Color(Options.CurrentRole(), EMERALD),
+		Muted(forever and 'TALENT TREE' or 'SPECIALIZATION') .. '   ' .. Color(tostring(SpecName()), classColor),
+		Muted(forever and 'FRAME LAYOUT' or 'SPEC ROLE') .. '   ' .. Color(Options.CurrentRole(), EMERALD),
 		Muted('ELVUI PROFILE') .. '   ' .. tostring(E and E.data and E.data:GetCurrentProfile() or '-'),
 		Muted('BANZAI') .. '   ' .. ((record and record.applied) and Color('ACTIVE  (applied ' .. tostring(record.applied.time) .. ')', EMERALD) or Color('NOT APPLIED ON THIS CHARACTER', { 1, 0.8, 0.2 })),
 		Muted('CHARACTER SYNC') .. '   ' .. Options.SyncBadge(),
@@ -216,8 +247,35 @@ end
 ---------------------------------------------------------------------------
 -- Roles and Character Sync (Roles.lua, Sync.lua)
 ---------------------------------------------------------------------------
+-- 1.5.0-dev3: BANZAI > APPEARANCE > WINDOW SKINS (Banzai Art Skins.lua)
+function Options.SkinsSupported()
+	local art = Art()
+	local skins = art and art.Skins
+	return (skins and skins.Supported and skins.Supported()) and true or false
+end
+
+function Options.SkinsText()
+	local art = Art()
+	local skins = art and art.Skins
+	if not (skins and skins.Report) then return Muted('Banzai Art is not loaded.') end
+	local lines = {}
+	for _, line in ipairs(skins:Report()) do lines[#lines + 1] = Muted(line) end
+	local chat = art.ChatLayout
+	if chat and chat.StatusText then lines[#lines + 1] = Muted('Chat windows: ' .. chat:StatusText()) end
+	return table.concat(lines, '\n')
+end
+
 function Options.CurrentRole()
 	return (ns.Roles and ns.Roles.Current()) or 'DPS'
+end
+
+function Options.RoleText()
+	local role = ns.Roles and ns.Roles.Detection and ns.Roles:Detection()
+	if not role then return Muted('CURRENT SPEC ROLE:  ') .. Color(Options.CurrentRole(), EMERALD) end
+	local tree = role.tree and (role.tree .. ' (tree ' .. tostring(role.index) .. ')') or 'no leading tree'
+	return Muted('FOREVER TREE / CLASS:  ') .. Color(tree .. ' / ' .. tostring(role.class or '-'), { 1, 1, 1 })
+		.. '\n' .. Muted('DETECTED / SELECTED LAYOUT:  ') .. Color(tostring(role.role or 'unmapped') .. ' / ' .. tostring(role.layout), EMERALD)
+		.. Muted('   (' .. tostring(role.reason) .. '; override ' .. tostring(role.override) .. ')')
 end
 
 local BADGE_COLORS = { MASTER = PURPLE, SYNCED = EMERALD, UPDATE = { 1, 0.8, 0.2 }, NOT_SYNCED = { 1, 0.45, 0.35 }, NO_MASTER = LIME }
@@ -289,6 +347,20 @@ function Options.PlanText()
 	for _, line in ipairs(ns.Sync and ns.Sync:Plan() or {}) do
 		lines[#lines + 1] = string.find(line, '^BANZAI') and Color(line, { 1, 1, 1 }) or Muted(line)
 	end
+	return table.concat(lines, '\n')
+end
+
+function Options.SyncPreviewText()
+	local preview = ns.Sync and ns.Sync:Preview()
+	if not preview then return Muted('Character Sync preview unavailable.') end
+	local lines = {
+		Muted('CLIENT / MASTER FLAVOR:  ') .. tostring(preview.client) .. ' / ' .. tostring(preview.source),
+		Muted('SETTING GROUPS PLANNED:  ') .. tostring(preview.applied) .. Muted('   ADAPTER CHANGES RECORDED:  ') .. tostring(preview.adapted)
+			.. Muted('   OPTIONAL COMPONENTS TO SKIP:  ') .. tostring(preview.skipped),
+		Muted('LOCAL ROLE / LAYOUT:  ') .. tostring(preview.role) .. Muted('   (' .. tostring(preview.roleSource) .. ')'),
+		Muted('PRESERVED ON THIS CHARACTER:  ') .. table.concat(preview.preserved, ', '),
+	}
+	if preview.blocked then lines[#lines + 1] = Color('BLOCKED: ' .. preview.blocked .. '. No backup or settings will be changed.', { 1, 0.3, 0.3 }) end
 	return table.concat(lines, '\n')
 end
 
@@ -535,7 +607,11 @@ local WIDTH = 1.15 -- every toggle, slider, select and button
 local function Header(order, text) return { order = order, type = 'header', name = Title(text) } end
 local function Text(order, text, size) return { order = order, type = 'description', name = text, fontSize = size or 'medium', width = 'full' } end
 local function Space(order) return { order = order, type = 'description', name = ' ', width = 'full' } end
-local function Section(order, title, args) return { order = order, type = 'group', inline = true, name = Title(title), args = args } end
+local function Section(order, title, args, extra)
+	local group = { order = order, type = 'group', inline = true, name = Title(title), args = args }
+	for k, v in pairs(extra or {}) do group[k] = v end -- 1.5.0-dev3: e.g. hidden on a client the section is not for
+	return group
+end
 local function Tab(order, name, args) return { order = order, type = 'group', name = name, args = args } end
 
 local function Control(kind, order, name, desc, get, set, extra)
@@ -803,6 +879,7 @@ end
 -- 1.0.0 texts
 ---------------------------------------------------------------------------
 Options.TEXT = {
+	windowSkins = 'BANZAI skins existing windows; it does not replace them. Each switch gives its windows the BANZAI surface (the Background chosen under PANEL STYLE: glass, solid, or a parchment heading over the solid surface), a thin border, the accent line and the BANZAI heading face. Everything inside a window - its lists, buttons and what they do - stays its owner\'s. Switch any of them off and that window is exactly its owner\'s again; the BANZAI HUD is not affected.',
 	castBar = 'BANZAI SPLIT Player and Target (1.3.3): while a spell is cast or channelled its icon replaces the class art in the central circle, and a bamboo cast bar as wide as the whole frame shows the progress above the health / resource values - a cast fills left to right, a channel drains right to left, in the unit\'s class colours; steel when it cannot be interrupted; INTERRUPTED for a moment in crimson. The class art returns as soon as the cast ends. Off: the spell icon in the circle alone. The bar on / off moves the class bar (combo points, holy power ...) - a reload applies that part. Per character (Character Sync carries these choices).',
 	targetNPC = 'A synthetic sample (1.3.3): Banzai\'s own NPC crest and sample numbers only - no real unit, no portrait, no game icon.',
 	identityArt = 'Your original BANZAI class identities (1.3.2) in the BANZAI SPLIT central circles and party circles. BANZAI (default): there, while the classic identity circles keep the Fabled art; BANZAI everywhere: the classic Focus / Party / Boss circles too (arena enemies keep theirs). FABLED: the Fabled art first. CLASS COLOUR: class-colour discs. The enhanced target nameplate and the BANZAI COMPACT Details rows keep their art - too small for the full artwork. Per character (Character Sync carries the choice, never the art files).',
@@ -888,12 +965,16 @@ function Options:Build()
 			brand = { order = 1, type = 'description', fontSize = 'large', width = 'full',
 				image = function() return MEDIA .. 'BanzaiLogo', 256, 64 end,
 				name = function()
-					return Gradient('BANZAI ' .. version, EMERALD, PURPLE) .. '\n' .. Gradient('UI BY HARDKORH', LIME, VIOLET) .. '      ' .. Muted('release')
+					return Gradient('BANZAI ' .. version, EMERALD, PURPLE) .. '\n' .. Gradient('UI BY HARDKORH', LIME, VIOLET) .. '      ' .. Muted(ns.CHANNEL or 'release')
 				end },
 
 			home = Page('home', {
 				header = Header(1, 'BANZAI ' .. version),
 				status = { order = 2, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.HomeText() end },
+				-- 1.5.0-dev1: the client and every prerequisite as Banzai really uses it
+				client = Section(5, 'CLIENT AND PREREQUISITES', {
+					list = { order = 1, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.ClientText() end },
+				}),
 				actions = Section(10, 'APPLY / REPAIR', {
 					info = Text(1, Muted('Apply / repair writes the full Banzai setup for this character again (your setup from before Banzai stays saved). A reload finishes it.')),
 					apply = Button(2, 'Apply / repair Banzai', 'Apply the full Banzai setup to this character. Your current setup is saved first and can be restored under BACKUP & RESTORE.',
@@ -932,9 +1013,26 @@ function Options:Build()
 						sorting = { 'SOLID', 'GLASS', 'PARCHMENT' },
 						get = ArtGet('panelBackground'), set = function(_, value) R:SetPanelBackground(value) Notify() end },
 					borderScale = ArtRange(4, 'borderScale', 'Border scale', 'The thickness of the bamboo (100% = 10 units, as thick as the room beside the chat and the meters allows; the minimap frame follows it).', 0.7, 1, 0.05, { isPercent = true }),
-					glassOpacity = ArtRange(5, 'glassOpacity', 'Glass opacity', 'The dark green glass behind the chat and Details (also the objective tracker).', 0.3, 1, 0.02, { isPercent = true }),
+					-- (1.5.0-dev3: the ELVUI PANELS window skin follows the glass too, when it is on; otherwise nothing more is written)
+					glassOpacity = Range(5, 'Glass opacity', 'The dark green glass behind the chat and Details (also the objective tracker).', 0.3, 1, 0.02, ArtGet('glassOpacity'),
+						function(_, value) local art = Art() if art then art:Set('glassOpacity', value) end if R.ApplyElvUIPanels then R:ApplyElvUIPanels() end Notify() end, { isPercent = true }),
 					parchmentBrightness = ArtRange(6, 'parchmentBrightness', 'Parchment brightness', nil, 0.7, 1.1, 0.02, { isPercent = true, disabled = function() local art = Art() return not (art and art:Get('panelBackground') == 'PARCHMENT') end }),
 				}),
+				-- 1.5.0-dev3: BANZAI Window Skin (Banzai Art Skins.lua). WoW Forever only in this proof build.
+				windowSkins = Section(17, 'WINDOW SKINS', {
+					info = Text(1, Muted(Options.TEXT.windowSkins)),
+					skinBlizzard = Toggle(2, 'Blizzard Windows', 'Character, Spellbook / Abilities, Talents, Professions / Skills, Quest Log, Merchant, Gossip, Trainer, Mail, Friends, Guild, Inspect and Trade, where ElvUI has skinned the window. The BANZAI surface, border, accent line and heading face only; every button, list and action stays the game\'s.',
+						ArtGet('skinBlizzard'), function(_, v) R:SetWindowSkin('skinBlizzard', v) Notify() end),
+					skinBaganator = Toggle(3, 'Baganator', 'The BANZAI surface on Baganator\'s bag and bank windows when Baganator is installed. Items, sorting, search, categories and the bank are Baganator\'s; BANZAI builds no bag of its own.',
+						ArtGet('skinBaganator'), function(_, v) R:SetWindowSkin('skinBaganator', v) Notify() end),
+					skinZygor = Toggle(4, 'Zygor', 'The BANZAI surface on the Zygor guide viewer when Zygor is installed. The guide, its steps, their colours, navigation and waypoints are Zygor\'s.',
+						ArtGet('skinZygor'), function(_, v) R:SetWindowSkin('skinZygor', v) Notify() end),
+					detailsFrame = ArtToggle(5, 'detailsFrame', 'Details', 'The approved Banzai frame around the DAMAGE / HEALING meters (the same switch as LAYOUT > DETAILS).'),
+					chatFrame = ArtToggle(6, 'chatFrame', 'Chat', 'The approved Banzai CHAT frame; on WoW Forever also the chat windows arranged inside it (the same switch as LAYOUT > CHAT).'),
+					skinElvUI = Toggle(7, 'ElvUI Panels', 'ElvUI\'s own translucent panels in the BANZAI tone (the Banzai profile\'s panel colour). Off: ElvUI\'s colour as the profile had it - the approved look.',
+						ArtGet('skinElvUI'), function(_, v) R:SetWindowSkin('skinElvUI', v) Notify() end),
+					status = { order = 8, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.SkinsText() end },
+				}, { hidden = function() return not Options.SkinsSupported() end }),
 				branding = Section(20, 'BRANDING', {
 					logo = ArtToggle(1, 'logo', 'BANZAI logo', 'The small BANZAI wordmark at the top centre of the screen (out of combat). Click it to open these settings.'),
 					combatLogo = ArtToggle(2, 'combatLogo', 'Combat logo', 'In combat the wordmark moves between Player and Target, larger, with a small Banzai tree behind it; back to the top after combat.'),
@@ -1041,7 +1139,7 @@ function Options:Build()
 				groups = Tab(20, 'GROUP FRAMES', {
 					roles = Section(1, 'ROLE LAYOUTS', {
 						text = Text(1, Muted('Party, raid, arena and boss frames take the DPS or the HEALER layout from your spec by themselves; each role keeps its own positions (party and arena allies separately). Reset them on LAYOUT > DPS / HEALER PLACEMENT.')),
-						current = { order = 2, type = 'description', fontSize = 'medium', width = 'full', name = function() return Muted('CURRENT SPEC ROLE:  ') .. Color(Options.CurrentRole(), EMERALD) end },
+						current = { order = 2, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.RoleText() end },
 					}),
 					party = Section(10, 'PARTY', { text = Text(1, Muted(Options.TEXT.groups.party)), preview = Options.PreviewToggle(2, 'party') }),
 					raid = Section(20, 'RAID', { text = Text(1, Muted(Options.TEXT.groups.raid)), preview = Options.PreviewToggle(2, 'raid') }),
@@ -1057,7 +1155,7 @@ function Options:Build()
 						previewStyle = Select(3.5, 'Frame style', 'Shows the samples in BANZAI CLASSIC or BANZAI SPLIT (the frames in use do not change).', { CLASSIC = 'Banzai Classic', SPLIT = 'Banzai Split' }, { 'CLASSIC', 'SPLIT' },
 							function() local p = PreviewModule() return (p and p.Style and p:Style()) or 'CLASSIC' end,
 							function(_, v) local p = PreviewModule() if p and p.SetStyle then p:SetStyle(v) end Notify() end),
-						previewSpecRole = { order = 4, type = 'description', fontSize = 'medium', width = 'full', name = function() return Muted('CURRENT SPEC ROLE:  ') .. Color(Options.CurrentRole(), EMERALD) end },
+						previewSpecRole = { order = 4, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.RoleText() end },
 						previewAll = Button(5, 'SHOW ALL', nil, function() local p = PreviewModule() if p then p:ShowAll() end Notify() end),
 						previewNone = Button(6, 'HIDE ALL', nil, function() local p = PreviewModule() if p then p:HideAll() end Notify() end),
 						previewPlayer = Options.PreviewToggle(10, 'player'),
@@ -1148,10 +1246,13 @@ function Options:Build()
 				roles = Tab(30, 'DPS / HEALER PLACEMENT', {
 					roles = Section(10, 'DPS / HEALER PLACEMENT', {
 						roleInfo = Text(1, Muted('DPS: party and arena allies in a column on the left. HEALER: party and arena allies in one horizontal row in the centre, just above Player / Target; HEALER raid frames on the same baseline. Move them with ElvUI\'s movers: each role keeps its own positions, party and arena allies separately.')),
-						current = { order = 2, type = 'description', fontSize = 'medium', width = 'full', name = function() return Muted('CURRENT SPEC ROLE:  ') .. Color(Options.CurrentRole(), EMERALD) end },
-						roleResetDPS = Button(3, 'Reset DPS positions', nil, function() if ns.Roles then ns.Roles:Reset('DPS') end Notify() end),
-						roleResetHealer = Button(4, 'Reset HEALER positions', nil, function() if ns.Roles then ns.Roles:Reset('HEALER') end Notify() end),
-					}),
+							current = { order = 2, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.RoleText() end },
+							roleOverride = Select(3, 'Forever role override', 'AUTO uses only a verified local class/tree mapping. An ambiguous or unmapped tree keeps the last layout; DPS and HEALER can be selected locally. This choice is never synchronized.', { AUTO = 'Automatic', DPS = 'DPS layout', HEALER = 'HEALER layout' }, { 'AUTO', 'DPS', 'HEALER' },
+								function() return ns.Roles and ns.Roles:Override() or 'AUTO' end, function(_, value) if ns.Roles then ns.Roles:SetOverride(value) end Notify() end,
+								{ hidden = function() return not (ns.Flavor and ns.Flavor.IsForever()) end }),
+							roleResetDPS = Button(4, 'Reset DPS positions', nil, function() if ns.Roles then ns.Roles:Reset('DPS') end Notify() end),
+							roleResetHealer = Button(5, 'Reset HEALER positions', nil, function() if ns.Roles then ns.Roles:Reset('HEALER') end Notify() end),
+						}),
 				}),
 			}, 'tab'),
 
@@ -1202,7 +1303,10 @@ function Options:Build()
 					}),
 				}),
 				diagnostics = Tab(30, 'DIAGNOSTICS', {
-					components = Section(10, 'SYNC DIAGNOSTICS', {
+				preview = Section(5, 'DRY-RUN PREVIEW', {
+					list = { order = 1, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.SyncPreviewText() end },
+				}),
+				components = Section(10, 'SYNC DIAGNOSTICS', {
 						list = { order = 1, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.DiagnosticsText() end },
 					}),
 					characters = Section(20, 'CHARACTERS ON BANZAI', {
@@ -1300,7 +1404,8 @@ function Options:Build()
 			about = Page('about', {
 				header = Header(1, 'BANZAI'),
 				brand = Text(2, Gradient('BANZAI UI BY HARDKORH', LIME, PURPLE), 'large'),
-				version = Text(3, 'Version ' .. Color(version, EMERALD) .. '   ' .. Muted('Retail release. Credits, font notices and third-party notices: the docs folder inside the Banzai addon.')),
+				version = Text(3, 'Version ' .. Color(version, EMERALD) .. '   ' .. Muted((ns.CHANNEL == 'release' and ('Release for Retail and WoW Forever; this client: ' .. (ns.Flavor and ns.Flavor.ClientText() or 'Retail') .. '.') or ('Private proof build for ' .. (ns.Flavor and ns.Flavor.ClientText() or 'this client') .. ' - not a release.'))
+					.. ' Credits, font notices and third-party notices: the docs folder inside the Banzai addon.')),
 				credits = Section(10, 'CREDITS', {
 					list = { order = 1, type = 'description', fontSize = 'medium', width = 'full', name = function() return Options.CreditsText() end },
 				}),

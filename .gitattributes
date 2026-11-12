@@ -1,0 +1,9 @@
+# One byte-for-byte source on every machine: the release package is built from these files, so a checkout on
+# Windows must not differ from the one the release workflow makes. Text is LF everywhere; the rest is binary.
+* text=auto eol=lf
+*.tga binary
+*.png binary
+*.jpg binary
+*.ttf binary
+*.otf binary
+*.zip binary

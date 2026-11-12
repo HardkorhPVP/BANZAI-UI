@@ -1,12 +1,14 @@
 {
-  "name": "bushido-private-restoration",
-  "version": "0.6.0",
+  "name": "banzai-ui",
+  "version": "1.5.0",
   "private": true,
-  "description": "PRIVATE LOCAL USE ONLY - tooling for BANZAI, Darren's local Bushido restoration. Not for publication.",
+  "description": "Build, test and release tooling for BANZAI UI (World of Warcraft Retail and WoW Forever). The addon itself is in addons/.",
   "scripts": {
     "build": "node tools/build.js",
-    "validate": "node tools/validate.js",
-    "test": "node tests/run.js"
+    "test": "node tests/run.js",
+    "references": "node tools/fetch-references.js",
+    "package": "node tools/release.js",
+    "validate": "node tools/validate.js"
   },
   "devDependencies": {
     "fengari": "^0.1.4",
