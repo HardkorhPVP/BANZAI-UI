@@ -2,7 +2,7 @@
 ## Title: |cff9cff4dBanzai|r Art
 ## Notes: BANZAI UI by HARDKORH - Banzai Art. Bamboo frames and panels (CLASS / BANZAI / HARDKORH borders; SOLID / GLASS / PARCHMENT), BANZAI CLASSIC or SPLIT unit frames, Details and chat panels, BUFFS panel, objective tracker, cast history, action buttons, cooldown bars, PvP frames, tooltips, AFK screen, the original BANZAI class identities and the display fonts (BANZAI Default: Shojumaru). Requires ElvUI and JiberishMedia.
 ## Author: HARDKORH
-## Version: 1.5.0
+## Version: 1.5.1
 ## X-Curse-Project-ID: 1793334
 ## X-Wago-ID: BKpEZrGE
 ## X-Website: https://github.com/HardkorhPVP/BANZAI-UI

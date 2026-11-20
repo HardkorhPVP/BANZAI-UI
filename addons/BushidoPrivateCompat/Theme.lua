@@ -70,7 +70,7 @@ local _, ns = ...
 local Theme = {}
 ns.Theme = Theme
 
-Theme.VERSION = '1.5.0'
+Theme.VERSION = '1.5.1'
 -- 1.5.0-dev1: a "-dev" build is a private proof (the AFK screen, the BANZAI settings and /banzai status say so)
 Theme.CHANNEL = string.find(Theme.VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 Theme.MEDIA = 'Interface\\AddOns\\BushidoPrivateCompat\\media\\'
@@ -189,8 +189,22 @@ Theme.DEFAULTS = {
 	skinBaganator = true,       -- ... on Baganator's bag / bank windows (when Baganator is installed)
 	skinZygor = true,           -- ... on the Zygor guide viewer (when Zygor is installed)
 	skinElvUI = false,          -- ElvUI's own translucent panels in the BANZAI tone (off: ElvUI's colour, the approved look)
+	-- 1.5.1 BANZAI > APPEARANCE > BAR TEXTURE (Theme:BarWeave below)
+	barTexture = 'WEAVE',       -- WEAVE (BANZAI Weave, the default: the slashed surface, filled and empty) | SMOOTH (BANZAI Smooth: one continuous surface)
 }
 Theme.SKIN_KEYS = { 'skinBlizzard', 'skinBaganator', 'skinZygor', 'skinElvUI' }
+-- 1.5.1-dev1 the BANZAI bar textures. file: the tintable status-bar texture (LibSharedMedia statusbar, by its label);
+-- strands: the layer BANZAI lays over a bar's own fill (Theme:BarWeave) - none for BANZAI Smooth, the bars as they were
+Theme.BAR_TEXTURES = {
+	SMOOTH = { label = 'BANZAI Smooth', file = 'BanzaiBar' },
+	WEAVE = { label = 'BANZAI Weave', file = 'BanzaiWeave', strands = 'BanzaiWeaveStrands' },
+}
+Theme.BAR_TEXTURE_ORDER = { 'WEAVE', 'SMOOTH' }
+Theme.BAR_TEXTURE_DEFAULT = 'WEAVE'   -- the BANZAI default (1.5.1)
+Theme.BAR_TEXTURE_FALLBACK = 'SMOOTH' -- what is drawn when the weave cannot be (its files refused): the bars as they always were
+-- 1.5.1-dev2: the sheet (256 x 64 texels, tools/lib/weave.js) and the empty part of a bar under BANZAI Weave: a dark
+-- neutral surface (bottom -> top), about a seventh of a full bar's brightness - the slashes read on it, the fill leads
+Theme.WEAVE = { width = 256, height = 64, empty = { bottom = { 0.085, 0.108, 0.098 }, top = { 0.150, 0.182, 0.168 }, alpha = 1 } }
 Theme.ACTION_STYLES = { 'SQUARE', 'CIRCLE', 'ELVUI' }
 Theme.BUFFS_POSITION = { min = 26, maxX = 900, maxY = 600 } -- min: the bamboo ends stay on screen
 Theme.PANEL_BORDERS = { 'CLASS', 'BANZAI', 'HARDKORH' }
@@ -245,7 +259,7 @@ local HEMP_ROPE = { { 0.00, { 0.56, 0.42, 0.24 } }, { 1.00, { 0.38, 0.27, 0.14 }
 -- Settings saved by an older build: values still at a default that a newer
 -- build changed take the new default (a value Darren changed himself is
 -- kept); retired keys go. One step per schema.
-Theme.SCHEMA = 9
+Theme.SCHEMA = 10
 local MIGRATIONS = {
 	[4] = function(db) -- 0.3.0 -> 0.4.0
 		if db.barHeight == 22 then db.barHeight = 28 end
@@ -262,6 +276,11 @@ local MIGRATIONS = {
 	end,
 	[8] = function(db) -- 1.1.1 -> 1.2.0: the old default BANZAI (circles) becomes the new default SQUARE; ELVUI is kept
 		if db.actionStyle == 'BANZAI' then db.actionStyle = 'SQUARE' end
+	end,
+	[10] = function(db) -- 1.5.1: BANZAI Weave is the default bar texture. No released build stored this setting; the private
+		-- 1.5.1 proofs wrote their default (Smooth) into every character, which was never a choice - it goes, and the
+		-- character follows the BANZAI default. From here on a stored value is the character's own choice and is kept.
+		db.barTexture = nil
 	end,
 	[9] = function(db) -- display-font selection lock: a retired bake-off face becomes the semantic default
 		if db.displayFace == 'WANTBANZAI' or db.displayFace == 'WANTCOFFEE' or db.displayFace == 'CHANG_CHANG_WOODCUT' or db.displayFace == 'ROOTS_OF_CHINA' or db.displayFace == 'ODISHI' then db.displayFace = 'BANZAI_DEFAULT' end
@@ -344,6 +363,7 @@ function Theme:DB(key)
 	for _, key in ipairs(self.SKIN_KEYS) do -- 1.5.0-dev3: a switch is on or off; anything else is its default
 		if type(db[key]) ~= 'boolean' then db[key] = self.DEFAULTS[key] end
 	end
+	if not self.BAR_TEXTURES[db.barTexture] then db.barTexture = self.BAR_TEXTURE_DEFAULT end -- 1.5.1: an unknown bar texture is the BANZAI default
 	return db
 end
 
@@ -634,6 +654,191 @@ do
 	local media = _G.LibStub and _G.LibStub('LibSharedMedia-3.0', true)
 	if media and media.Register then
 		media:Register('statusbar', 'Banzai', Theme.MEDIA .. 'BanzaiBar.tga')
+		-- 1.5.1-dev1: the BANZAI bar textures by their own names, once, here ("BANZAI Smooth" is the file the profiles
+		-- written before 1.5.1 know as "Banzai"; that name stays registered for them)
+		for _, key in ipairs(Theme.BAR_TEXTURE_ORDER) do
+			local def = Theme.BAR_TEXTURES[key]
+			media:Register('statusbar', def.label, Theme.MEDIA .. def.file .. '.tga')
+		end
 		Theme.statusbarRegistered = true
 	end
+end
+
+---------------------------------------------------------------------------
+-- 1.5.1 BAR TEXTURE (BANZAI > APPEARANCE > BAR TEXTURE)
+---------------------------------------------------------------------------
+-- BANZAI Smooth: the bars exactly as they were - nothing is added to a bar.
+-- BANZAI Weave (1.5.1-dev2: the slashed surface Darren approved, tools/lib/weave.js): one material over the WHOLE
+-- bar - its coloured fill and its empty part alike. Two textures of the bar itself, nothing else:
+--   the empty base   under the fill: a dark neutral surface in place of the near-black trough, so the slashes
+--                    stay visible where the bar is empty (dark, low in contrast, subordinate to the fill)
+--   the strand sheet over the fill: BanzaiWeaveStrands across the whole bar, repeated at one texel per SCREEN
+--                    PIXEL from the bar's top-left corner - the same slashes continue from the fill into the
+--                    empty part, a bar's length never stretches them and the UI scale never blurs them
+-- Both are regions of the status bar, so everything that is a frame on the bar - absorb / shield / heal
+-- prediction bars, the health texts, cast-bar layers - stays above the material, untouched. No value of the bar
+-- is read: the fill moves between the two by itself. Status bars only: never a panel, a window, a button, a
+-- border or a background.
+local weaves = {}      -- every bar given to Theme:BarWeave, in order
+local weaveOf = {}     -- [bar] = its entry
+local barMedia = {}    -- [file] = false once the client has refused it
+
+-- false when the client refuses a BANZAI bar file (a damaged or incomplete install): asked once per file, of a
+-- hidden texture of BANZAI's own
+function Theme:BarMediaOK(file)
+	if barMedia[file] == nil then
+		barMedia[file] = true
+		if not self.barProbe then
+			local keeper = CreateFrame('Frame', nil, UIParent)
+			keeper:SetSize(1, 1)
+			keeper:Hide()
+			self.barProbe = keeper:CreateTexture(nil, 'BACKGROUND')
+		end
+		if self.barProbe:SetTexture(self.MEDIA .. file) == false then barMedia[file] = false end
+	end
+	return barMedia[file]
+end
+
+-- the bar texture in use: the character's choice (BANZAI Weave unless BANZAI Smooth was chosen); BANZAI Smooth
+-- for a texture whose files the client refuses
+function Theme:BarTextureKey()
+	local key = self:DB().barTexture
+	local def = self.BAR_TEXTURES[key]
+	if not def then return self.BAR_TEXTURE_FALLBACK end
+	if def.strands and not (self:BarMediaOK(def.strands) and self:BarMediaOK(def.file)) then return self.BAR_TEXTURE_FALLBACK end
+	return key
+end
+
+function Theme:BarTexture()
+	return self.BAR_TEXTURES[self:BarTextureKey()]
+end
+
+-- the empty part of a bar under BANZAI Weave: dark and neutral (never the bar's colour), light enough that the
+-- slashes read on it
+function Theme:WeaveEmpty(texture)
+	local E = self.WEAVE.empty
+	texture:SetTexture(self.WHITE)
+	self:Gradient(texture, 'VERTICAL', E.bottom, E.top, E.alpha, E.alpha)
+end
+
+-- a bar's size in UI units, when the client gives plain numbers (nil: not laid out yet, or kept from addons)
+local function BarSize(bar)
+	local w = bar.GetWidth and bar:GetWidth()
+	local h = bar.GetHeight and bar:GetHeight()
+	if type(w) ~= 'number' or type(h) ~= 'number' or IsSecret(w) or IsSecret(h) or w < 1 or h < 1 then return nil end
+	return w, h
+end
+
+local function BuildWeave(entry)
+	local bar = entry.bar
+	if not (bar.GetStatusBarTexture and bar:GetStatusBarTexture()) then return false end
+	-- under the fill (the bar's own BORDER layer; BANZAI's dark track, where the bar has one, is that surface)
+	local base = entry.track
+	if not base then
+		base = bar:CreateTexture(nil, 'BORDER', nil, 7)
+		base:SetAllPoints(bar)
+		base:Hide()
+	end
+	-- over the fill and over the colour BANZAI paints on it (ARTWORK), under every frame on the bar
+	local sheet = bar:CreateTexture(nil, 'OVERLAY', nil, -8)
+	sheet:SetAllPoints(bar)
+	sheet:Hide()
+	-- BANZAI's own frame of the bar's size: its OnSizeChanged lays the sheet out again (an event, nothing polls)
+	local sizer = CreateFrame('Frame', nil, bar)
+	sizer:SetAllPoints(bar)
+	sizer:EnableMouse(false)
+	sizer:SetScript('OnSizeChanged', function() Theme:PaintBarWeave(entry) end)
+	entry.base, entry.sheet, entry.sizer, entry.ownBase = base, sheet, sizer, entry.track == nil -- all or none
+	return true
+end
+
+-- one bar for the texture in use: its two regions are made the first time BANZAI Weave is wanted on it, and
+-- hidden (its track the plain trough again) otherwise
+function Theme:PaintBarWeave(entry)
+	local def = self:BarTexture()
+	local compat = ns.Compat
+	local on = def.strands ~= nil and entry.shown ~= false and not (compat and compat.Active and not compat.Active())
+	if on and not entry.sheet then
+		-- a bar the client does not let BANZAI build on (a restricted frame) is left as it is, once and quietly
+		-- (a bar without a fill texture yet is simply asked again at the next refresh)
+		local ok, built = false, false
+		if not entry.refused then
+			ok, built = pcall(BuildWeave, entry)
+			if not ok then entry.refused = true end
+		end
+		if not (ok and built == true) then on = false end
+	end
+	if not entry.sheet then return false end
+	if on then
+		local W = self.WEAVE
+		local sheet = entry.sheet
+		local w, h = BarSize(entry.bar)
+		if not w then
+			on = false -- no size yet: the sizer lays it out when there is one
+		else
+			local path = self.MEDIA .. def.strands
+			-- the nearest texel: with one texel per pixel that is the sheet itself, wherever the bar sits
+			local ok, loaded = pcall(sheet.SetTexture, sheet, path, 'REPEAT', 'REPEAT', 'NEAREST')
+			if not ok then loaded = sheet:SetTexture(path, 'REPEAT', 'REPEAT') end
+			if loaded == false then
+				barMedia[def.strands] = false -- refused after all: BANZAI Smooth from here on
+				on = false
+			else
+				local px = Theme.PixelScale(entry.bar)
+				if px <= 0 then px = 1 end
+				-- the bar's own screen pixels, counted in sheets: one texel per pixel from its top-left corner
+				sheet:SetTexCoord(0, w * px / W.width, 0, h * px / W.height)
+			end
+		end
+	end
+	entry.sheet:SetShown(on)
+	if entry.ownBase then
+		if on then self:WeaveEmpty(entry.base) end
+		entry.base:SetShown(on)
+	elseif on then
+		self:WeaveEmpty(entry.base) -- BANZAI's own track of this bar: the textured empty surface ...
+	else
+		self:Trough(entry.base)     -- ... and the plain dark trough again
+	end
+	return on
+end
+
+-- A BANZAI-owned status bar (or a unit-frame bar BANZAI already dresses) takes the bar texture in use.
+-- track: BANZAI's own dark track texture under this bar, if it has one (it becomes the empty surface; without
+-- one the bar gets its own). Returns the bar's entry; asking again for the same bar returns the same one.
+function Theme:BarWeave(bar, track)
+	if not (bar and bar.GetStatusBarTexture) then return nil end
+	local entry = weaveOf[bar]
+	if not entry then
+		entry = { bar = bar, track = track }
+		weaveOf[bar] = entry
+		weaves[#weaves + 1] = entry
+	end
+	self:PaintBarWeave(entry)
+	return entry
+end
+
+-- a bar whose material follows something else of BANZAI's (the targeted nameplate's treatment)
+function Theme:ShowBarWeave(entry, shown)
+	if not entry then return end
+	entry.shown = shown and true or false
+	self:PaintBarWeave(entry)
+end
+
+-- every bar again: the texture chosen, Banzai Art switched on / off, a new UI scale. Returns how many show the weave.
+function Theme:RefreshBarWeave()
+	local shown = 0
+	for _, entry in ipairs(weaves) do
+		if self:PaintBarWeave(entry) then shown = shown + 1 end
+	end
+	return shown
+end
+
+function Theme:BarWeaveOf(bar) return weaveOf[bar] end
+function Theme:BarWeaveCount() return #weaves end
+
+do -- the sheet is counted in screen pixels: a new UI scale or resolution counts again (events only, nothing polls)
+	local events = CreateFrame('Frame')
+	for _, event in ipairs({ 'UI_SCALE_CHANGED', 'DISPLAY_SIZE_CHANGED' }) do pcall(events.RegisterEvent, events, event) end
+	events:SetScript('OnEvent', function() Theme:RefreshBarWeave() end)
 end

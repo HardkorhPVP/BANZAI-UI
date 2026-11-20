@@ -6,7 +6,7 @@
 //   node tools/public-snapshot.js <folder>     (the folder must be empty or absent; nothing is pushed anywhere)
 //
 // Left out: private development notes and proofs (docs/ other than docs/banzai-ui/, the legacy validation notes,
-// the publication worksheets). Everything else that is tracked goes in: addon source, the shared client adapter,
+// the publication worksheets, the bar-texture design-review tool). Everything else that is tracked goes in: addon source, the shared client adapter,
 // BANZAI's own assets, the tools, the tests, the user documentation, credits, release notes, the workflow.
 'use strict';
 
@@ -19,6 +19,7 @@ const PRIVATE = [
   /^docs\/(?!banzai-ui\/)/,          // proofs, crash / lines notes, validator reconciliations
   /^LEGACY-VALIDATION-NOTES\.md$/,
   /^publication\//,                  // store copy, announcements, reconciliation worksheets
+  /^tools\/weave-candidates\.js$/,   // 1.5.1: the bar-texture design review (development evidence, not part of the product)
 ];
 // what must never be in public source (the package has its own, stricter scan in tools/release.js)
 const USER = (process.env.USERPROFILE || process.env.HOME || '').split(/[\\/]/).pop() || 'no-local-user';

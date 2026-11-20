@@ -88,7 +88,7 @@ end
 local function Calls(kind) local n = 0 for _, c in ipairs(HK_FCF) do if c[1] == kind then n = n + 1 end end return n end
 
 test('Banzai Art 1.5.0 builds on WoW Forever with the chat adapter and the window skins and no error', function()
-	expectEq(Theme.VERSION, '1.5.0', 'version')
+	expectEq(Theme.VERSION, '1.5.1', 'version')
 	expect(Chat ~= nil and BanzaiCompat.ChatLayout == Chat, 'the chat adapter is reachable through BanzaiCompat')
 	expect(Skins ~= nil and BanzaiCompat.Skins == Skins, 'the window skins are reachable through BanzaiCompat')
 	-- the BANZAI CHAT frame is where 1.2.0 put it: the stand-in gives it its screen rectangle

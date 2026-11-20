@@ -169,7 +169,7 @@ test('0.3.0 / 0.4.0 settings: changed defaults move to 0.5.0, own choices kept, 
 	expectEq(db.smoothBars and db.chatFrame and db.logo, true, 'new pieces on by default')
 	expectEq(db.actionStyle, 'SQUARE', '1.2.0: Banzai Square action buttons by default')
 	expectEq(db.cooldownBars, false, 'target cooldown bars off by default')
-	expectEq(db.schema, 9, 'migrated once (1.3.9: schema 9)')
+	expectEq(db.schema, 10, 'migrated once (1.5.1: schema 10)')
 	expectEq(db.displayFace, 'BANZAI_DEFAULT', 'new characters use the undecided BANZAI default')
 	ns.Compat:Set('displayFace', 'WANTBANZAI')
 	Theme:DB()
@@ -536,7 +536,7 @@ test('0.8.0 settings: PvP choices and the preview state are BANZAI settings (Cha
 	local D = Theme.DEFAULTS
 	expectEq(D.pvpCastColors and D.pvpDispelGlow and D.pvpDefensives, true, 'PvP switches on by default')
 	expectEq(D.previewState, 'NORMAL', 'preview NORMAL by default')
-	expectEq(Theme.VERSION, '1.5.0', 'version')
+	expectEq(Theme.VERSION, '1.5.1', 'version')
 	Theme:DB().pvpDefensives = false
 	Theme:DB().previewState = 'CC'
 	local out = Theme:Export()
@@ -2159,7 +2159,7 @@ test('1.0.0 AFK screen: the character turning in the middle, HUD hidden while it
 	expect(string.find(HK_Plain(f.where.text), 'LEVEL 80', 1, true) and string.find(HK_Plain(f.where.text), 'DORNOGAL', 1, true), 'level and zone')
 	expect(string.find(f.logo.path, 'BanzaiLogo', 1, true), 'BANZAI')
 	expect(string.find(HK_Plain(f.brand.text), 'UI BY HARDKORH', 1, true), 'UI BY HARDKORH')
-	expect(string.find(HK_Plain(f.version.text), 'BANZAI 1.5.0', 1, true), 'version')
+	expect(string.find(HK_Plain(f.version.text), 'BANZAI 1.5.1', 1, true), 'version')
 	expect(string.find(f.tree.path, 'BanzaiBonsai', 1, true), 'the bamboo tree')
 	expect(f.art and f.art.icon, 'the Fabled class art')
 	expect(f.glass.gradient and f.glass.gradient[2].a < 0.95, 'dark translucent glass')
@@ -2463,7 +2463,7 @@ test('1.1.0 settings: unknown styles fall back, the old band thickness is clampe
 	expectEq(db.panelBorder .. '/' .. db.panelBackground, 'BANZAI/GLASS', 'unknown values fall back to the defaults')
 	BanzaiCompatDB.chars['Old - Realm'] = { schema = 6, borderScale = 1.8, glassOpacity = 0.6 }
 	local old = Theme:DB('Old - Realm')
-	expectEq(old.schema, 9, 'migrated through 9 (1.3.9)')
+	expectEq(old.schema, 10, 'migrated through 10 (1.5.1)')
 	expectEq(old.borderScale, 1, 'a 1.0.3 band thickness of 180 % becomes the thickest stalk')
 	expectEq(old.glassOpacity, 0.6, 'own choices kept')
 	expectEq(old.panelBorder .. '/' .. old.panelBackground .. '/' .. old.parchmentBrightness, 'BANZAI/GLASS/1', 'new keys at their defaults')
@@ -2746,7 +2746,7 @@ test('1.2.0 settings: BANZAI (1.1.x circles) becomes SQUARE once, ELVUI kept; bu
 	BanzaiCompatDB.chars['Elv - Realm'] = { schema = 7, actionStyle = 'ELVUI' }
 	expectEq(Theme:DB('Circle - Realm').actionStyle, 'SQUARE', '1.1.x default (circles) -> the new default square')
 	expectEq(Theme:DB('Elv - Realm').actionStyle, 'ELVUI', 'an ElvUI choice is kept')
-	expectEq(Theme:DB('Circle - Realm').schema, 9, 'schema 9')
+	expectEq(Theme:DB('Circle - Realm').schema, 10, 'schema 10')
 	local db = Theme:DB('Circle - Realm')
 	db.actionStyle = 'CIRCLE'
 	expectEq(Theme:DB('Circle - Realm').actionStyle, 'CIRCLE', 'circles chosen after the upgrade are kept')

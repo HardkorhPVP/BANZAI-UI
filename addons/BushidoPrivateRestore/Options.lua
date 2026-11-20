@@ -879,6 +879,7 @@ end
 -- 1.0.0 texts
 ---------------------------------------------------------------------------
 Options.TEXT = {
+	barTexture = 'The texture of the bars BANZAI owns: the Player / Target / Focus and party health and resource bars BANZAI dresses, the targeted nameplate, the BANZAI SPLIT cast bar, the cooldown bars and the samples. BANZAI Weave (the default) is a slashed, brushed surface over the whole bar: the filled part keeps its colour, the empty part stays dark and textured. It is drawn one texel per screen pixel, so no bar stretches it and no UI scale blurs it. BANZAI Smooth is one continuous surface, the bar as it was before 1.5.1. It shows at once - no reload. Panels, windows, chat, Details, buttons and borders never take it.',
 	windowSkins = 'BANZAI skins existing windows; it does not replace them. Each switch gives its windows the BANZAI surface (the Background chosen under PANEL STYLE: glass, solid, or a parchment heading over the solid surface), a thin border, the accent line and the BANZAI heading face. Everything inside a window - its lists, buttons and what they do - stays its owner\'s. Switch any of them off and that window is exactly its owner\'s again; the BANZAI HUD is not affected.',
 	castBar = 'BANZAI SPLIT Player and Target (1.3.3): while a spell is cast or channelled its icon replaces the class art in the central circle, and a bamboo cast bar as wide as the whole frame shows the progress above the health / resource values - a cast fills left to right, a channel drains right to left, in the unit\'s class colours; steel when it cannot be interrupted; INTERRUPTED for a moment in crimson. The class art returns as soon as the cast ends. Off: the spell icon in the circle alone. The bar on / off moves the class bar (combo points, holy power ...) - a reload applies that part. Per character (Character Sync carries these choices).',
 	targetNPC = 'A synthetic sample (1.3.3): Banzai\'s own NPC crest and sample numbers only - no real unit, no portrait, no game icon.',
@@ -1000,6 +1001,15 @@ function Options:Build()
 					bambooArt = ArtToggle(4, 'bambooArt', 'Bamboo bundles', 'The tied three-stalk bamboo bundles on the Player and Target frames (the other unit frames stay clean).'),
 					smoothBars = Toggle(7, 'Smooth health bars', 'One continuous Banzai surface on unit frames, nameplates and Details rows (off: Bushido\'s slotted textures). A reload applies it.',
 						ArtGet('smoothBars'), function(_, v) R:SetSmoothBars(v) Notify() end),
+				}),
+				-- 1.5.1-dev1: the texture of BANZAI's own bars (Banzai Art Theme:BarWeave), shown at once
+				barTextureSection = Section(12, 'BAR TEXTURE', {
+					info = Text(1, Muted(Options.TEXT.barTexture)),
+					barTexture = { order = 2, type = 'select', style = 'radio', width = 'full', name = 'Bar texture',
+						values = { WEAVE = Gradient(R.BAR_TEXTURES.WEAVE, LIME, EMERALD) .. '   diagonal slashes over the whole bar - the fill in its colour, the empty part dark (default)', SMOOTH = R.BAR_TEXTURES.SMOOTH .. '   one continuous surface' },
+						sorting = R.BAR_TEXTURE_ORDER,
+						get = function() return (R:BarTexture()) end, set = function(_, value) R:SetBarTexture(value) Notify() end },
+					state = { order = 3, type = 'description', fontSize = 'medium', width = 'full', name = function() return Muted('In use: ' .. R:BarTextureText()) end },
 				}),
 				-- 1.1.0: the chat, Details and minimap frames - one bamboo construction, three border colourings, three interiors, any with any
 				panelStyle = Section(15, 'PANEL STYLE', {

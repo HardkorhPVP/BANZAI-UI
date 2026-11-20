@@ -609,6 +609,21 @@ local function PlainPart(parent, part, scale, design)
 	return holder
 end
 
+-- 1.5.1: the bar texture in use on a dressed unit frame's health and resource bars (BANZAI CLASSIC: ElvUI fills
+-- them; the material is two regions of the bar itself, under ElvUI's absorb / heal-prediction bars and texts). Not the raid frames (many small bars, left as they are) and
+-- not the arena frames (1.3.4: nothing more is ever made on a PvP frame).
+Compat.WEAVE_SKIP = { '^ElvUF_Raid', '^ElvUF_Arena' }
+function Compat.WeaveUnitBars(frame)
+	local name = frame and frame.GetName and frame:GetName()
+	if type(name) ~= 'string' or IsSecret(name) then return false end
+	for _, pattern in ipairs(Compat.WEAVE_SKIP) do
+		if string.find(name, pattern) then return false end
+	end
+	Theme:BarWeave(frame.Health)
+	Theme:BarWeave(frame.Power)
+	return true
+end
+
 -- 0.5.0: smooth dark trough under the health bar in place of the slot art. It
 -- follows the bar itself, so it fits every frame without Bushido's offsets.
 local function Trough(parent, part, scale)
@@ -621,6 +636,7 @@ local function Trough(parent, part, scale)
 		holder:SetPoint('BOTTOMRIGHT', bar, 'BOTTOMRIGHT', 1, -1)
 		local level = bar.GetFrameLevel and bar:GetFrameLevel()
 		if type(level) == 'number' and not IsSecret(level) then holder:SetFrameLevel(math.max(0, level - 1)) end
+		Compat.WeaveUnitBars(parent) -- 1.5.1
 	else
 		scale = scale or 1
 		holder:SetSize(part.w * scale, 20 * scale)
@@ -1528,6 +1544,7 @@ function Compat:Refresh()
 	self:UpdateBranding()
 	if ns.Bar and ns.Bar.Refresh then ns.Bar:Refresh() end
 	if ns.Health and ns.Health.Refresh then ns.Health:Refresh() end
+	Theme:RefreshBarWeave() -- 1.5.1: the bar texture in use, on every bar BANZAI gave it to
 	-- 1.0.0: the tooltip glass and the AFK screen follow a profile switch at once (Backup & Restore)
 	if ns.Tooltip and ns.Tooltip.Refresh then ns.Tooltip:Refresh() end
 	if ns.AFK and ns.AFK.Refresh then ns.AFK:Refresh() end

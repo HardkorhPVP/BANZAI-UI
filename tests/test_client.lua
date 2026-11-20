@@ -256,28 +256,28 @@ test('Retail: APPLY BANZAI writes the profile as 1.4.0 did - nothing is adapted,
 	expectEq(BushidoPrivateRestoreDB.client, nil, 'no client record on Retail')
 end)
 
-test('version: BANZAI 1.5.0, a release, named with the client everywhere it is shown', function()
-	expectEq(ns.VERSION, '1.5.0', 'version')
+test('version: BANZAI 1.5.1, a release, named with the client everywhere it is shown', function()
+	expectEq(ns.VERSION, '1.5.1', 'version')
 	expectEq(ns.CHANNEL, 'release', 'channel')
 	HK_PRINTS = {}
 	ns.Restore:Status()
-	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.0 (release; Retail 12.1.5 (build 69848, Interface 120105); profile source 624839aa)', 1, true), 'status line: ' .. tostring(HK_PRINTS[1]))
-	expect(string.find(StaticPopupDialogs.BANZAI_RELOAD.text, 'BANZAI 1.5.0', 1, true), 'reload dialog')
+	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.1 (release; Retail 12.1.5 (build 69848, Interface 120105); profile source 624839aa)', 1, true), 'status line: ' .. tostring(HK_PRINTS[1]))
+	expect(string.find(StaticPopupDialogs.BANZAI_RELOAD.text, 'BANZAI 1.5.1', 1, true), 'reload dialog')
 	local home = HK_Plain(ns.Options.HomeText())
-	expect(string.find(home, 'VERSION   BANZAI 1.5.0   release', 1, true), 'HOME version')
+	expect(string.find(home, 'VERSION   BANZAI 1.5.1   release', 1, true), 'HOME version')
 	expect(string.find(home, 'CLIENT   Retail 12.1.5', 1, true), 'HOME client')
 	expect(string.find(home, 'SPECIALIZATION   Feral', 1, true), 'HOME keeps SPECIALIZATION on Retail')
 	expect(string.find(home, 'SPEC ROLE   DPS', 1, true), 'HOME keeps SPEC ROLE on Retail')
-	expectEq(ElvDB.profiles[NAME] ~= nil and BushidoPrivateRestoreDB.characters[E.mynameRealm].applied.version, '1.5.0', 'the applied record carries it')
+	expectEq(ElvDB.profiles[NAME] ~= nil and BushidoPrivateRestoreDB.characters[E.mynameRealm].applied.version, '1.5.1', 'the applied record carries it')
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('')
-	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.0 (release, Retail 12.1.5', 1, true), '/banzai: ' .. tostring(HK_PRINTS[1]))
+	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.1 (release, Retail 12.1.5', 1, true), '/banzai: ' .. tostring(HK_PRINTS[1]))
 end)
 
 test('prerequisites: each is checked against what Banzai uses; Retail is never blocked by the list', function()
 	local pre = ns.Restore:Preflight()
 	expectEq(pre.flavor, 'RETAIL', 'flavor')
-	expectEq(pre.version, '1.5.0', 'version')
+	expectEq(pre.version, '1.5.1', 'version')
 	local byName = {}
 	for _, item in ipairs(pre.items) do byName[item.name] = item end
 	expectEq(byName.ElvUI.state, 'READY', 'ElvUI')
@@ -293,7 +293,7 @@ test('prerequisites: each is checked against what Banzai uses; Retail is never b
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('forever')
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.5.0 (release) on Retail 12.1.5', 1, true), '/banzai forever names the build and the client')
+	expect(string.find(text, 'BANZAI 1.5.1 (release) on Retail 12.1.5', 1, true), '/banzai forever names the build and the client')
 	expect(string.find(text, 'client adapter: none needed on this client', 1, true), 'no adapter on Retail')
 	expect(string.find(text, 'Details 1.0: READY', 1, true), 'a component line with its version')
 end)

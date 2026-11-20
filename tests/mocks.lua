@@ -45,7 +45,11 @@ function Methods:CreateMaskTexture()
 	self.maskTextures[#self.maskTextures + 1] = m
 	return m
 end
-function Methods:SetTexture(p, wrapH, wrapV, filter) self.path, self.wrapH, self.wrapV, self.filter = p, wrapH, wrapV, filter end
+function Methods:SetTexture(p, wrapH, wrapV, filter) -- 1.5.1-dev1: as the client, false for a file it refuses
+	if HK_REFUSED_TEXTURES and p and HK_REFUSED_TEXTURES[p] then return false end
+	self.path, self.wrapH, self.wrapV, self.filter = p, wrapH, wrapV, filter
+	return true
+end
 function Methods:SetSnapToPixelGrid(v) self.snap = v end
 function Methods:SetTexelSnappingBias(v) self.texelBias = v end
 function Methods:EnableMouseWheel(v) self.wheel = v and true or false end
@@ -315,7 +319,11 @@ local media = {
 local LSM = {
 	IsValid = function(_, kind, name) return media[kind] and media[kind][name] ~= nil end,
 	Fetch = function(_, kind, name) return media[kind] and media[kind][name] end,
-	Register = function(_, kind, name, path) media[kind] = media[kind] or {} media[kind][name] = path return true end,
+	Register = function(_, kind, name, path) -- 1.5.1-dev1: every registration is counted (HK_LSM_REGISTERED['statusbar:BANZAI Weave'])
+		HK_LSM_REGISTERED = HK_LSM_REGISTERED or {}
+		HK_LSM_REGISTERED[kind .. ':' .. name] = (HK_LSM_REGISTERED[kind .. ':' .. name] or 0) + 1
+		media[kind] = media[kind] or {} media[kind][name] = path return true
+	end,
 }
 LibStub = setmetatable({}, { __call = function(_, name)
 	if name == 'LibSharedMedia-3.0' then return LSM end

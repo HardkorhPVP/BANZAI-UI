@@ -1,6 +1,6 @@
 # BANZAI UI on WoW Forever
 
-BANZAI UI 1.5.0 is one addon for two clients: **World of Warcraft Retail 12.1.5** (Interface 120105) and
+BANZAI UI is one addon for two clients: **World of Warcraft Retail 12.1.5** (Interface 120105) and
 **WoW Forever 1.60.1** (Interface 16001). The same two folders work in both; BANZAI detects the client it runs in
 and adapts where the two games really differ.
 

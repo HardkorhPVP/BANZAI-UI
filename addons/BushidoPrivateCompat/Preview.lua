@@ -373,6 +373,7 @@ local function Bar(parent, level)
 	bar:SetStatusBarTexture(BAR)
 	bar:SetMinMaxValues(0, 1)
 	bar:SetFrameLevel(level)
+	bar.weave = Theme:BarWeave(bar) -- 1.5.1: the samples show the bar texture in use
 	return bar
 end
 

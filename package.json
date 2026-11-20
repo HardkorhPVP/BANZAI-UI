@@ -1,6 +1,6 @@
 {
   "name": "banzai-ui",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "description": "Build, test and release tooling for BANZAI UI (World of Warcraft Retail and WoW Forever). The addon itself is in addons/.",
   "scripts": {

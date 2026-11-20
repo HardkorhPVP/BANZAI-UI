@@ -19,6 +19,7 @@ const tga = require('./lib/tga');
 const wordmark = require('./lib/wordmark');
 const bonsai = require('./lib/bonsai');
 const hub = require('./lib/hub');
+const weave = require('./lib/weave');
 const identity = require('./lib/identity');
 const fonts = require('./lib/fonts');
 
@@ -69,6 +70,8 @@ function main() {
   for (const [name, t] of Object.entries(panel.generate())) tga.write(path.join(mediaDir, name + '.tga'), t.w, t.h, t.px);
   // 1.3.0 BANZAI SPLIT: the central hub (disc, class ring, accent, icon mask, cast swipe) and the class-disc sheet
   for (const [name, t] of Object.entries(hub.generate())) tga.write(path.join(mediaDir, name + '.tga'), t.w, t.h, t.px);
+  // 1.5.1 BANZAI Weave: the bar texture and its strand layer, one geometry (tools/lib/weave.js)
+  for (const [name, t] of Object.entries(weave.generate())) tga.write(path.join(mediaDir, name + '.tga'), t.w, t.h, t.px);
   // 1.3.0 Darren's own identity icons (1.3.2: assets/identity/class-<class>.png, made by tools/icons.js), converted when
   // present and valid; the manifest says which. A broken file is left out for its class only (that class falls back).
   const icons = identity.prepare(path.join(ROOT, 'assets', 'identity'));

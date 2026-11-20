@@ -439,7 +439,126 @@ const MUTANTS_RELEASE = [
   ['clients', PUBLISH_JS, 'WoW Forever is sent to Wago under the Retail key', "forever: 'supported_forever_patches'", "forever: 'supported_retail_patches'", 'release'],
   ['clients', PUBLISH_JS, 'WoW Forever is sent to CurseForge as a Retail version', 'forever: 88568', 'forever: 517', 'release'],
 ];
-const SETS = { dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
+// 1.5.1 BANZAI Weave (dev2: the approved slashed surface, filled and empty part alike): only the contracts of the bar
+// texture - the selection (Smooth / Weave, the default), the active fill routing (the sheet over the whole bar, pixel
+// locked, never tied to the fill), the empty texture routing (the dark neutral surface under the fill, a bar's own
+// track), the fallback (unknown choice, refused file, refused bar, no size), the media lookup, the setting's
+// persistence, the owned-surface routing, the overlay preservation (regions of the bar, nothing re-levelled) and the
+// asset itself.   node tools/mutate.js weave [word]
+const WEAVE_JS = 'tools/lib/weave.js';
+const COOLDOWN = 'dist/BushidoPrivateCompat/CooldownBars.lua';
+const PLATE = 'dist/BushidoPrivateCompat/TargetPlate.lua';
+const MUTANTS_WEAVE = [
+  // selection
+  // the default (1.5.1: BANZAI Weave) and the upgrade
+  ['default', THEME, 'BANZAI Smooth is still the default', "\tbarTexture = 'WEAVE',       -- WEAVE", "\tbarTexture = 'SMOOTH',       -- WEAVE", 'barweave'],
+  ['default', THEME, 'an unknown choice becomes BANZAI Smooth, not the default', "db.barTexture = self.BAR_TEXTURE_DEFAULT end -- 1.5.1: an unknown bar texture is the BANZAI default", "db.barTexture = self.BAR_TEXTURE_FALLBACK end -- 1.5.1: an unknown bar texture is the BANZAI default", 'barweave'],
+  ['default', THEME, 'a private proof\'s written Smooth is kept as if it were a choice (no upgrade step)', "\t\tdb.barTexture = nil\n\tend,\n\t[9] = function(db)", "\tend,\n\t[9] = function(db)", 'barweave'],
+  ['default', THEME, 'the upgrade step never runs (the schema is not raised)', 'Theme.SCHEMA = 10\n', 'Theme.SCHEMA = 9\n', 'barweave'],
+  ['default', THEME, 'the upgrade step runs at every load (a chosen BANZAI Smooth is lost)', "\t\tdb.schema = self.SCHEMA\n", "\t\tdb.schema = self.SCHEMA - 1\n", 'barweave'],
+  ['default', THEME, 'the default listed second', "Theme.BAR_TEXTURE_ORDER = { 'WEAVE', 'SMOOTH' }", "Theme.BAR_TEXTURE_ORDER = { 'SMOOTH', 'WEAVE' }", 'barweave'],
+  ['default', RESTORE, 'the settings read BANZAI Smooth for a character without a choice', "Restore.BAR_TEXTURE_DEFAULT = 'WEAVE'", "Restore.BAR_TEXTURE_DEFAULT = 'SMOOTH'"],
+  ['default', OPTIONS, 'BANZAI Smooth is marked as the default on the page', "the empty part dark (default)', SMOOTH = R.BAR_TEXTURES.SMOOTH .. '   one continuous surface' },", "the empty part dark', SMOOTH = R.BAR_TEXTURES.SMOOTH .. '   one continuous surface (default)' },"],
+  ['default', RESTORE, 'the page lists BANZAI Smooth first', "Restore.BAR_TEXTURE_ORDER = { 'WEAVE', 'SMOOTH' }", "Restore.BAR_TEXTURE_ORDER = { 'SMOOTH', 'WEAVE' }"],
+  ['default', SPLIT, 'the sample\'s weave sheet is not requested at load (asked of the disk when the sample shows)', ", Theme.WHITE, Theme.MEDIA .. Theme.BAR_TEXTURES.WEAVE.strands }", ", Theme.WHITE }", 'test_compat'],
+  ['selection', THEME, 'the weave is drawn whatever is chosen', "\treturn key\nend\n\nfunction Theme:BarTexture()", "\treturn 'WEAVE'\nend\n\nfunction Theme:BarTexture()", 'barweave'],
+  ['selection', THEME, 'BANZAI Smooth never hides the sheet again', '\tentry.sheet:SetShown(on)', '\tentry.sheet:SetShown(true)', 'barweave'],
+  ['selection', THEME, 'BANZAI Smooth builds on the bar too (something is made on every bar)', "\tif on and not entry.sheet then\n", "\tif not entry.sheet then\n", 'barweave'],
+  ['selection', COMPAT, 'a new choice is not drawn until something else refreshes', "\tTheme:RefreshBarWeave() -- 1.5.1: the bar texture in use, on every bar BANZAI gave it to\n", '', 'barweave'],
+  ['selection', THEME, 'the weave stays when Banzai Art is switched off', ' and not (compat and compat.Active and not compat.Active())', '', 'barweave'],
+  ['selection', THEME, 'a bar told to hide its weave (the old target\'s plate) shows it anyway', '\tentry.shown = shown and true or false', '\tentry.shown = true', 'barweave'],
+  // active fill routing: the sheet
+  ['active fill', THEME, 'the sheet under the fill (no slashes on the colour)', "\tlocal sheet = bar:CreateTexture(nil, 'OVERLAY', nil, -8)", "\tlocal sheet = bar:CreateTexture(nil, 'BACKGROUND', nil, -8)", 'barweave'],
+  ['active fill', THEME, 'the sheet tied to the fill (no slashes on the empty part)', "\tsheet:SetAllPoints(bar)\n\tsheet:Hide()", "\tsheet:SetAllPoints(bar:GetStatusBarTexture())\n\tsheet:Hide()", 'barweave'],
+  ['active fill', THEME, 'the sheet counted in UI units (the slashes grow with the UI scale)', '\t\t\t\tsheet:SetTexCoord(0, w * px / W.width, 0, h * px / W.height)', '\t\t\t\tsheet:SetTexCoord(0, w / W.width, 0, h / W.height)', 'barweave'],
+  ['active fill', THEME, 'one sheet stretched over the bar', '\t\t\t\tsheet:SetTexCoord(0, w * px / W.width, 0, h * px / W.height)', '\t\t\t\tsheet:SetTexCoord(0, 1, 0, 1)', 'barweave'],
+  ['active fill', THEME, 'the sheet counted square (the slashes squeezed flat)', '\t\t\t\tsheet:SetTexCoord(0, w * px / W.width, 0, h * px / W.height)', '\t\t\t\tsheet:SetTexCoord(0, w * px / W.width, 0, h * px / W.width)', 'barweave'],
+  ['active fill', THEME, 'the sheet clamped, not repeated', "pcall(sheet.SetTexture, sheet, path, 'REPEAT', 'REPEAT', 'NEAREST')", "pcall(sheet.SetTexture, sheet, path, 'CLAMP', 'CLAMP', 'NEAREST')", 'barweave'],
+  ['active fill', THEME, 'the texels blended (soft)', "pcall(sheet.SetTexture, sheet, path, 'REPEAT', 'REPEAT', 'NEAREST')", "pcall(sheet.SetTexture, sheet, path, 'REPEAT', 'REPEAT', 'LINEAR')", 'barweave'],
+  ['active fill', THEME, 'a new bar size is not laid out', "\tsizer:SetScript('OnSizeChanged', function() Theme:PaintBarWeave(entry) end)\n", '', 'barweave'],
+  ['active fill', THEME, 'a bar gets a second sheet when it is asked again', '\tlocal entry = weaveOf[bar]\n\tif not entry then', '\tlocal entry = nil\n\tif not entry then', 'barweave'],
+  ['active fill', THEME, 'the bar\'s own fill faded out under the sheet', "\tsheet:SetAllPoints(bar)\n\tsheet:Hide()", "\tsheet:SetAllPoints(bar)\n\tsheet:Hide()\n\tbar:GetStatusBarTexture():SetAlpha(0)", 'barweave'],
+  // empty texture routing: the surface under the fill
+  ['empty texture', THEME, 'no empty surface (the slashes vanish on the near-black trough)', "\t\tif on then self:WeaveEmpty(entry.base) end\n\t\tentry.base:SetShown(on)", "\t\tentry.base:SetShown(false)", 'barweave'],
+  ['empty texture', THEME, 'the empty surface over the fill (the colour covered)', "\t\tbase = bar:CreateTexture(nil, 'BORDER', nil, 7)", "\t\tbase = bar:CreateTexture(nil, 'OVERLAY', nil, 7)", 'barweave'],
+  ['empty texture', THEME, 'the empty surface tied to the fill, not the whole bar', "\t\tbase:SetAllPoints(bar)\n\t\tbase:Hide()", "\t\tbase:SetAllPoints(bar:GetStatusBarTexture())\n\t\tbase:Hide()", 'barweave'],
+  ['empty texture', THEME, 'the empty part as bright as a fill', 'top = { 0.150, 0.182, 0.168 }', 'top = { 0.750, 0.782, 0.768 }', 'barweave'],
+  ['empty texture', THEME, 'the empty part black (the slashes cannot be seen)', 'empty = { bottom = { 0.085, 0.108, 0.098 }, top = { 0.150, 0.182, 0.168 }', 'empty = { bottom = { 0.010, 0.012, 0.011 }, top = { 0.020, 0.024, 0.022 }', 'barweave'],
+  ['empty texture', THEME, 'the empty part tinted like health (green)', 'top = { 0.150, 0.182, 0.168 }', 'top = { 0.050, 0.300, 0.080 }', 'barweave'],
+  ['empty texture', THEME, 'the empty part translucent (it fades with what is behind the bar)', 'top = { 0.150, 0.182, 0.168 }, alpha = 1 }', 'top = { 0.150, 0.182, 0.168 }, alpha = 0.4 }', 'barweave'],
+  ['empty texture', THEME, 'the empty surface left on under BANZAI Smooth', "\t\tif on then self:WeaveEmpty(entry.base) end\n\t\tentry.base:SetShown(on)", "\t\tif on then self:WeaveEmpty(entry.base) end\n\t\tentry.base:SetShown(true)", 'barweave'],
+  ['empty texture', THEME, 'a bar\'s own track is ignored (a second surface is made)', "\tlocal base = entry.track\n", "\tlocal base = nil\n", 'barweave'],
+  ['empty texture', THEME, 'a bar\'s own track is not coloured for the weave', "\t\tself:WeaveEmpty(entry.base) -- BANZAI's own track of this bar: the textured empty surface ...", "\t\tself:Trough(entry.base) -- BANZAI's own track of this bar: the textured empty surface ...", 'barweave'],
+  ['empty texture', THEME, 'a bar\'s own track keeps the weave colour under BANZAI Smooth', "\t\tself:Trough(entry.base)     -- ... and the plain dark trough again", "\t\tself:WeaveEmpty(entry.base)     -- ... and the plain dark trough again", 'barweave'],
+  ['empty texture', SPLIT, 'the split bars\' track is not the empty surface', 'weave = Theme:BarWeave(bar, track) } -- 1.5.1', 'weave = Theme:BarWeave(bar) } -- 1.5.1', 'barweave'],
+  ['empty texture', COOLDOWN, 'the cooldown bars\' track is not the empty surface', '\tbar.weave = Theme:BarWeave(bar.status, bar.track) -- 1.5.1', '\tbar.weave = Theme:BarWeave(bar.status) -- 1.5.1', 'barweave'],
+  // fallback
+  ['fallback', THEME, 'an unknown choice is kept in the settings', "\tif not self.BAR_TEXTURES[db.barTexture] then db.barTexture = self.BAR_TEXTURE_DEFAULT end -- 1.5.1: an unknown bar texture is the BANZAI default\n", '', 'barweave'],
+  ['fallback', THEME, 'the fallback is the weave itself (a refused file is still the texture in use)', "Theme.BAR_TEXTURE_FALLBACK = 'SMOOTH'", "Theme.BAR_TEXTURE_FALLBACK = 'WEAVE'", 'barweave'],
+  // (not a mutant: Theme:BarTextureKey's own "if not def" guard. Theme:DB() has already brought an unknown value back to
+  // BANZAI Smooth when the key is read, so changing the guard changes nothing a test could see - it is a second line of
+  // defence only. The first line is the mutant above.)
+  ['fallback', THEME, 'a refused weave file is not noticed when it is set', '\t\t\tif loaded == false then', '\t\t\tif loaded == nil then', 'barweave'],
+  ['fallback', THEME, 'a refused file is forgotten (BANZAI Weave still reported in use)', "\t\t\t\tbarMedia[def.strands] = false -- refused after all: BANZAI Smooth from here on\n", '', 'barweave'],
+  ['fallback', THEME, 'the probe ignores a refusal', 'if self.barProbe:SetTexture(self.MEDIA .. file) == false then barMedia[file] = false end', 'if self.barProbe:SetTexture(self.MEDIA .. file) == nil then barMedia[file] = false end', 'barweave'],
+  ['fallback', THEME, 'a texture whose files are refused is still the one in use', "\tif def.strands and not (self:BarMediaOK(def.strands) and self:BarMediaOK(def.file)) then return self.BAR_TEXTURE_FALLBACK end\n", '', 'barweave'],
+  ['fallback', THEME, 'a bar the client refuses to build on raises an error', '\t\t\tok, built = pcall(BuildWeave, entry)', '\t\t\tok, built = true, BuildWeave(entry)', 'barweave'],
+  ['fallback', THEME, 'a refused bar is tried again at every refresh', '\t\t\tif not ok then entry.refused = true end\n', '', 'barweave'],
+  ['fallback', THEME, 'a bar without a size is drawn anyway (a stretched or empty sheet)', "\tif type(w) ~= 'number' or type(h) ~= 'number' or IsSecret(w) or IsSecret(h) or w < 1 or h < 1 then return nil end", "\tif type(w) ~= 'number' or type(h) ~= 'number' then return 1, 1 end", 'barweave'],
+  // media lookup
+  ['media lookup', THEME, 'BANZAI Weave registered with the smooth file', "media:Register('statusbar', def.label, Theme.MEDIA .. def.file .. '.tga')", "media:Register('statusbar', def.label, Theme.MEDIA .. 'BanzaiBar' .. '.tga')", 'barweave'],
+  ['media lookup', THEME, 'the textures registered under their keys, not their names', "media:Register('statusbar', def.label, Theme.MEDIA .. def.file .. '.tga')", "media:Register('statusbar', key, Theme.MEDIA .. def.file .. '.tga')", 'barweave'],
+  ['media lookup', THEME, 'the old "Banzai" name no longer registered', "\t\tmedia:Register('statusbar', 'Banzai', Theme.MEDIA .. 'BanzaiBar.tga')\n", '', 'barweave'],
+  ['media lookup', THEME, 'the sheet is the opaque tile (a grey sheet over the bar)', "\t\t\tlocal path = self.MEDIA .. def.strands", "\t\t\tlocal path = self.MEDIA .. def.file", 'barweave'],
+  ['media lookup', THEME, 'BANZAI Weave names the smooth file', "WEAVE = { label = 'BANZAI Weave', file = 'BanzaiWeave', strands = 'BanzaiWeaveStrands' }", "WEAVE = { label = 'BANZAI Weave', file = 'BanzaiBar', strands = 'BanzaiWeaveStrands' }", 'barweave'],
+  ['media lookup', THEME, 'the addon counts a sheet of another size', 'Theme.WEAVE = { width = 256, height = 64,', 'Theme.WEAVE = { width = 32, height = 32,', 'weave'],
+  // settings persistence
+  ['settings persistence', THEME, 'the setting is not a saved Banzai Art setting', "\tbarTexture = 'WEAVE',       -- WEAVE (BANZAI Weave, the default: the slashed surface, filled and empty) | SMOOTH (BANZAI Smooth: one continuous surface)\n", '', 'barweave'],
+  ['settings persistence', RESTORE, 'the choice is not written', "\tCompatSet('barTexture', value)\n\treturn value", '\treturn value'],
+  ['settings persistence', RESTORE, 'any name is written', '\tif not self.BAR_TEXTURES[value] then return nil end\n\tCompatSet', '\tCompatSet'],
+  ['settings persistence', RESTORE, 'the choice is read from another setting', "\tlocal chosen = CompatSetting('barTexture', self.BAR_TEXTURE_DEFAULT)", "\tlocal chosen = CompatSetting('smoothBars', self.BAR_TEXTURE_DEFAULT)"],
+  ['settings persistence', RESTORE, 'choosing asks for a reload', "\tCompatSet('barTexture', value)\n\treturn value", "\tCompatSet('barTexture', value)\n\tStaticPopup_Show('BANZAI_RELOAD')\n\treturn value"],
+  ['settings persistence', RESTORE, 'choosing writes the weave into the ElvUI profile', "\tCompatSet('barTexture', value)\n\treturn value", "\tCompatSet('barTexture', value)\n\tlocal profile = BanzaiProfile()\n\tif profile then profile.unitframe.statusbar = self.BAR_TEXTURES[value] end\n\treturn value"],
+  ['settings persistence', OPTIONS, 'the page always shows BANZAI Smooth', 'get = function() return (R:BarTexture()) end', "get = function() return 'SMOOTH' end"],
+  ['settings persistence', OPTIONS, 'the page does not write the choice', 'set = function(_, value) R:SetBarTexture(value) Notify() end', 'set = function(_, value) Notify() end'],
+  ['settings persistence', RESTORE, '/banzai bars does nothing', "if argument ~= '' and not Restore:SetBarTexture(argument) then Print('bar texture: smooth or weave') end", "if argument ~= '' and false then Print('bar texture: smooth or weave') end"],
+  ['settings persistence', RESTORE, 'a fallback is not reported', "\tif used ~= chosen then text = text .. ' (not available on this install: '", "\tif false then text = text .. ' (not available on this install: '"],
+  // owned-surface routing
+  ['owned-surface routing', SPLIT, 'the split bars\' surfaces get no bar texture', 'weave = Theme:BarWeave(bar, track) } -- 1.5.1', 'weave = nil } -- 1.5.1', 'barweave'],
+  ['owned-surface routing', CASTBAR, 'the cast bar gets no bar texture', '\tbar.weave = Theme:BarWeave(status)\n', '', 'barweave'],
+  ['owned-surface routing', CASTBAR, 'the weave on the cast bar\'s whole frame (bamboo and glass), not its status bar', '\tbar.weave = Theme:BarWeave(status)\n', '\tbar.weave = Theme:BarWeave(bar)\n', 'barweave'],
+  ['owned-surface routing', COOLDOWN, 'the cooldown bars get no bar texture', '\tbar.weave = Theme:BarWeave(bar.status, bar.track) -- 1.5.1', '\tbar.weave = nil -- 1.5.1', 'barweave'],
+  ['owned-surface routing', PREVIEW, 'the samples get no bar texture', '\tbar.weave = Theme:BarWeave(bar) -- 1.5.1: the samples show the bar texture in use', '\tbar.weave = nil', 'barweave'],
+  ['owned-surface routing', PLATE, 'the targeted nameplate gets no bar texture', 'weave = Theme:BarWeave(bar) } -- 1.5.1: the bar texture in use, with the treatment', 'weave = nil }', 'barweave'],
+  ['owned-surface routing', PLATE, 'the weave stays on a plate that is no longer the target\'s', '\tTheme:ShowBarWeave(deco.weave, classic) -- 1.5.1\n', '', 'barweave'],
+  ['owned-surface routing', COMPAT, 'arena frames get the material (something made on a PvP frame)', "Compat.WEAVE_SKIP = { '^ElvUF_Raid', '^ElvUF_Arena' }", "Compat.WEAVE_SKIP = { '^ElvUF_Raid' }", 'barweave'],
+  ['owned-surface routing', COMPAT, 'raid frames get the material', "Compat.WEAVE_SKIP = { '^ElvUF_Raid', '^ElvUF_Arena' }", "Compat.WEAVE_SKIP = { '^ElvUF_Arena' }", 'barweave'],
+  ['owned-surface routing', COMPAT, 'a dressed frame\'s resource bar is left out', '\tTheme:BarWeave(frame.Power)\n', '', 'barweave'],
+  ['owned-surface routing', COMPAT, 'a dressed frame\'s health bar is left out', '\tTheme:BarWeave(frame.Health)\n', '', 'barweave'],
+  ['owned-surface routing', COMPAT, 'a frame without a name is dressed', "\tif type(name) ~= 'string' or IsSecret(name) then return false end\n\tfor _, pattern in ipairs(Compat.WEAVE_SKIP)", "\tif type(name) ~= 'string' or IsSecret(name) then name = '' end\n\tfor _, pattern in ipairs(Compat.WEAVE_SKIP)", 'barweave'],
+  // overlay preservation: absorbs, shields, heal prediction and texts are frames on the bar and stay above the material
+  ['overlay preservation', THEME, 'the sheet in a frame of its own (level with the absorb / shield bars)', "\tlocal sheet = bar:CreateTexture(nil, 'OVERLAY', nil, -8)", "\tlocal sheet = CreateFrame('Frame', nil, bar):CreateTexture(nil, 'OVERLAY', nil, -8)", 'barweave'],
+  ['overlay preservation', THEME, 'the empty surface in a frame of its own (over the overlays)', "\t\tbase = bar:CreateTexture(nil, 'BORDER', nil, 7)", "\t\tbase = CreateFrame('Frame', nil, bar):CreateTexture(nil, 'BORDER', nil, 7)", 'barweave'],
+  ['overlay preservation', THEME, 'the sizer raised over the overlays', "\tsizer:EnableMouse(false)\n", "\tsizer:EnableMouse(false)\n\tsizer:SetFrameLevel(50)\n", 'barweave'],
+  ['overlay preservation', THEME, 'the sizer draws the sheet itself (a frame above the overlays)', "\tsizer:EnableMouse(false)\n", "\tsizer:EnableMouse(false)\n\tsizer:CreateTexture(nil, 'OVERLAY'):SetAllPoints(bar)\n", 'barweave'],
+  ['overlay preservation', THEME, 'the frames on the bar are hidden under the weave', "\tsizer:EnableMouse(false)\n", "\tsizer:EnableMouse(false)\n\tfor _, child in ipairs({ bar:GetChildren() }) do if child ~= sizer then child:Hide() end end\n", 'barweave'],
+  ['overlay preservation', THEME, 'the sizer catches the mouse over the bar', "\tsizer:EnableMouse(false)\n", "\tsizer:EnableMouse(true)\n", 'barweave'],
+  ['overlay preservation', CASTBAR, 'the cast bar\'s locked / interrupted layers moved from their 1.5.0 level', '\tover:SetFrameLevel(bar:GetFrameLevel() + 2)\n', '\tover:SetFrameLevel(bar:GetFrameLevel() + 3)\n', 'barweave'],
+  // the asset (tools/lib/weave.js; tests/test_weave.js)
+  ['asset', WEAVE_JS, 'another number sequence (not the approved strokes)', 'seed: 0xBA27A1,', 'seed: 0xBA27A2,', 'weave'],
+  ['asset', WEAVE_JS, 'the slashes mirrored (up to the right, as dev1)', 'slope: 0.44 + r() * 0.14,', 'slope: -0.44 - r() * 0.14,', 'weave'],
+  ['asset', WEAVE_JS, 'a regular hatch (every slash at one angle and length)', "length: (bold ? 34 : 16) + r() * (bold ? 50 : 34),\n      slope: 0.44 + r() * 0.14,", "length: 40 + r() * 0,\n      slope: 0.5 + r() * 0,", 'weave'],
+  ['asset', WEAVE_JS, 'steep slashes (45 degrees)', 'slope: 0.44 + r() * 0.14,', 'slope: 1.0 + r() * 0.14,', 'weave'],
+  ['asset', WEAVE_JS, 'strokes not wrapped around the sheet (a seam)', 'const o = ((((py % h) + h) % h) * w) + (((px % w) + w) % w);', 'if (px < 0 || py < 0 || px >= w || py >= h) continue;\n      const o = py * w + px;', 'weave'],
+  ['asset', WEAVE_JS, 'overlapping strokes add up (black blots)', 'dark[o] = Math.max(dark[o], s.depth * cover / (n * n));', 'dark[o] = Math.min(1, dark[o] + s.depth * cover / (n * n));', 'weave'],
+  ['asset', WEAVE_JS, 'far too many slashes (the bar is darkened)', 'slashes: 120,', 'slashes: 420,', 'weave'],
+  ['asset', WEAVE_JS, 'the broad streaks dropped', 'streaks: 26,', 'streaks: 0,', 'weave'],
+  ['asset', WEAVE_JS, 'a colour baked into the sheet', 'px[i * 4] = c; px[i * 4 + 1] = c; px[i * 4 + 2] = c; px[i * 4 + 3] = 255;', 'px[i * 4] = c; px[i * 4 + 1] = c; px[i * 4 + 2] = Math.round(c * 0.8); px[i * 4 + 3] = 255;', 'weave'],
+  ['asset', WEAVE_JS, 'a translucent sheet', 'px[i * 4 + 2] = c; px[i * 4 + 3] = 255;', 'px[i * 4 + 2] = c; px[i * 4 + 3] = 200;', 'weave'],
+  ['asset', WEAVE_JS, 'the strand layer not the sheet\'s own darkness', 'px[i * 4 + 3] = 255 - source.px[i * 4];', 'px[i * 4 + 3] = 255 - Math.round(source.px[i * 4] * 0.9);', 'weave'],
+  ['asset', WEAVE_JS, 'a sheet of another size', 'width: 256, height: 64,', 'width: 128, height: 64,', 'weave'],
+];
+const SETS = { weave: MUTANTS_WEAVE, dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
 
 function suiteFor(file) {
   if (file.startsWith('dist/BushidoPrivateRestore/')) return 'restore';

@@ -107,7 +107,7 @@ local function Build(frame)
 			frame:Tag(set.percent, ns.Health.PERCENT_TAG)
 		end
 	end
-	local deco = { overlay = overlay, health = health, frame = frame }
+	local deco = { overlay = overlay, health = health, frame = frame, weave = Theme:BarWeave(bar) } -- 1.5.1: the bar texture in use, with the treatment
 	decorations[frame] = deco
 	return deco
 end
@@ -155,6 +155,7 @@ TargetPlate.BuildEnhanced = BuildEnhanced
 local function Show(deco, shown)
 	local classic = shown and Theme:DB().targetPlate ~= false
 	deco.overlay:SetShown(classic)
+	Theme:ShowBarWeave(deco.weave, classic) -- 1.5.1
 	if deco.health then deco.health.holder:SetShown(classic) end
 	local text = deco.frame and deco.frame.Health and deco.frame.Health.Text
 	if text and text.SetAlpha then text:SetAlpha(classic and 0 or 1) end

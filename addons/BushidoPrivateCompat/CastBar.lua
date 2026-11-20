@@ -186,6 +186,8 @@ function CastBar.Build(parent, g, def, level)
 	status:SetFrameLevel(bar:GetFrameLevel() + 1)
 	bar.status = status
 	bar.fill = status:GetStatusBarTexture()
+	-- 1.5.1: the bar texture in use - regions of the status bar itself, under the interrupted / locked layers and the texts
+	bar.weave = Theme:BarWeave(status)
 	-- the bright edge on the moving end of the fill
 	bar.spark = status:CreateTexture(nil, 'OVERLAY')
 	bar.spark:SetTexture(Theme.WHITE)

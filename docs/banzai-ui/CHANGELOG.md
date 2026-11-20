@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.1 - BANZAI Weave
+
+**Bar textures ([APPEARANCE.md](APPEARANCE.md))**
+- Added BANZAI Weave, a new BANZAI-owned status-bar texture with irregular diagonal slash detail.
+- BANZAI Weave is now the default bar texture.
+- Depleted health, resource and supported status bars retain a darker version of the same textured material instead of becoming a flat trough.
+- Active bar regions preserve their normal semantic colours.
+- BANZAI Smooth remains available as an alternative (BANZAI > APPEARANCE > BAR TEXTURE, or `/banzai bars smooth|weave`).
+
+**Compatibility**
+- BANZAI Weave is validated on Retail / Midnight 12.1.5 and WoW Forever 1.60.1.
+- Existing BANZAI geometry, materials and window skins remain unchanged.
+
 ## 1.5.0 - WoW Forever
 
 One BANZAI UI for Retail 12.1.5 and WoW Forever 1.60.1. On Retail nothing changes beyond the version.

@@ -292,7 +292,7 @@ local function Surface(bar, noTrack)
 	overlay:SetTexture(BAR)
 	overlay:SetAllPoints(fill)
 	overlay:Hide()
-	return { track = track, overlay = overlay }
+	return { track = track, overlay = overlay, weave = Theme:BarWeave(bar, track) } -- 1.5.1: the bar texture in use (its track, when it has one, is the empty surface)
 end
 Split.Surface = Surface
 
@@ -1042,8 +1042,9 @@ local PREVIEW_ALPHA = 0.45 -- out of range, as ElvUI's range fader
 
 -- 1.3.3 every texture the TARGET NPC sample shows, requested once now (a hidden holder of Banzai Art's own), so
 -- selecting the sample later asks the disk for nothing new: Banzai media only - the crest, the hub, the bar
+-- (1.5.1: and the bar texture's sheet, which the sample's bars show under BANZAI Weave)
 Split.NPC_MEDIA = { Split.SAMPLE.npcCrest, Theme.MEDIA .. 'BanzaiHubDisc', Theme.MEDIA .. 'BanzaiHubRing', Theme.MEDIA .. 'BanzaiHubAccent',
-	Theme.MEDIA .. 'BanzaiHubMask', BAR, Theme.WHITE }
+	Theme.MEDIA .. 'BanzaiHubMask', BAR, Theme.WHITE, Theme.MEDIA .. Theme.BAR_TEXTURES.WEAVE.strands }
 do
 	local keeper = CreateFrame('Frame', nil, UIParent)
 	keeper:SetSize(1, 1)
@@ -1074,6 +1075,7 @@ local function PBar(parent, w, h, level)
 	track:SetAllPoints(bar)
 	Theme:Trough(track)
 	bar.track = track
+	bar.weave = Theme:BarWeave(bar, track) -- 1.5.1: the bar texture in use
 	return bar
 end
 

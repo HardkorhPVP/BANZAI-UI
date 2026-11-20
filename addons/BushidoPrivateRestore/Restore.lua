@@ -150,7 +150,7 @@ local Restore = {}
 ns.Restore = Restore
 
 local NAME = 'BANZAI'
-local VERSION = '1.5.0'
+local VERSION = '1.5.1'
 -- A "-dev" version is a private proof build, never a release; every proof build has its own version.
 local CHANNEL = string.find(VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 ns.VERSION = VERSION
@@ -1268,6 +1268,7 @@ function Restore:Status()
 	Print(format('buffs panel: %s, %d rows of %d, buffs at %d, %d (top-left); chat flush with the left screen edge', buffs.on and 'on' or 'off', buffs.rows, T.BUFFS_PANEL.perRow, buffs.x, buffs.y))
 	local art = _G.BanzaiCompat
 	if art and art.lastError then Print('Banzai art error (first seen): ' .. tostring(art.lastError)) end
+	Print('bar texture: ' .. self:BarTextureText()) -- 1.5.1-dev1
 	Print('health bars: ' .. (CompatSetting('smoothBars', true) and 'smooth' or 'Bushido') .. ', action buttons: ' .. T.ButtonStyle(CompatSetting('actionStyle', 'SQUARE'))
 		.. ', target cooldown bars (ElvUI 2 + 4): ' .. (CompatSetting('cooldownBars', false) and 'shown' or 'off'))
 	Print('Banzai tracker: ' .. (CompatTracker() and 'on' or 'off') .. ', Kaliel\'s Tracker: '
@@ -1462,6 +1463,37 @@ function Restore:SetToTScale(scale)
 	end)
 	StaticPopup_Show('BANZAI_RELOAD')
 	return scale
+end
+
+-- 1.5.1 BANZAI > APPEARANCE > BAR TEXTURE: BANZAI Weave (the default: the slashed surface on BANZAI's own bars,
+-- filled and empty part alike) | BANZAI Smooth (one continuous surface, the bars as they were before 1.5.1). Banzai Art draws it at once: nothing is written to the ElvUI or Details
+-- profile, and no reload is needed.
+Restore.BAR_TEXTURES = { SMOOTH = 'BANZAI Smooth', WEAVE = 'BANZAI Weave' }
+Restore.BAR_TEXTURE_ORDER = { 'WEAVE', 'SMOOTH' }
+Restore.BAR_TEXTURE_DEFAULT = 'WEAVE' -- the BANZAI default (Banzai Art's Theme.DEFAULTS.barTexture)
+function Restore:SetBarTexture(value)
+	value = type(value) == 'string' and string.upper(value) or ''
+	if not self.BAR_TEXTURES[value] then return nil end
+	CompatSet('barTexture', value)
+	return value
+end
+
+-- the character's choice and the texture Banzai Art really draws (BANZAI Smooth when the weave's files are missing)
+function Restore:BarTexture()
+	local chosen = CompatSetting('barTexture', self.BAR_TEXTURE_DEFAULT)
+	if not self.BAR_TEXTURES[chosen] then chosen = self.BAR_TEXTURE_DEFAULT end
+	local art = _G.BanzaiCompat
+	local theme = art and art.Theme
+	local used = theme and theme.BarTextureKey and theme:BarTextureKey() or chosen
+	if not self.BAR_TEXTURES[used] then used = 'SMOOTH' end
+	return chosen, used
+end
+
+function Restore:BarTextureText()
+	local chosen, used = self:BarTexture()
+	local text = self.BAR_TEXTURES[chosen]
+	if used ~= chosen then text = text .. ' (not available on this install: ' .. self.BAR_TEXTURES[used] .. ' is drawn)' end
+	return text
 end
 
 -- 0.5.0 options
@@ -1958,9 +1990,13 @@ SlashCmdList.BANZAI = function(input)
 		end
 	elseif command == 'editmode' then
 		Restore:ImportEditMode()
+	elseif command == 'bars' or command == 'bartexture' then
+		-- 1.5.1-dev1: /banzai bars smooth | weave (the same choice as BANZAI > APPEARANCE > BAR TEXTURE)
+		if argument ~= '' and not Restore:SetBarTexture(argument) then Print('bar texture: smooth or weave') end
+		Print('bar texture: ' .. Restore:BarTextureText())
 	elseif command == 'status' then
 		Restore:Status()
-		Print('commands: /banzai (options) | status | forever | apply | restore | theme vibrant|class | role auto|dps|healer | editmode')
+		Print('commands: /banzai (options) | status | forever | apply | restore | theme vibrant|class | bars smooth|weave | role auto|dps|healer | editmode')
 	elseif command == 'forever' or command == 'preflight' or command == 'client' then
 		-- 1.5.0-dev1: the client, the prerequisites as Banzai really uses them, and what the client adapter did
 		for _, line in ipairs(Restore:ClientReport()) do Print(line) end
@@ -1991,8 +2027,8 @@ function Restore:OnLogin()
 		record.applied.version = VERSION
 		record.applied.upgraded = date('%Y-%m-%d %H:%M:%S')
 		if CHANNEL == 'release' then
-			-- 1.5.0: one product for Retail and WoW Forever
-			Print(format('updated to %s %s (%s): WoW Forever support and optional window skins there; the approved Retail layouts and features are unchanged. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail'))
+			-- 1.5.1: the new default bar texture is named once, with where to change it
+			Print(format('updated to %s %s (%s): BANZAI Weave is the new default bar texture; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail'))
 		else
 			Print(format('updated to %s %s (%s, %s). /banzai forever shows the client report.', NAME, VERSION, CHANNEL, Flavor and Flavor.ClientText() or 'Retail')) -- 1.5.0-dev1
 		end

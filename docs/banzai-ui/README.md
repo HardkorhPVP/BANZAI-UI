@@ -1,6 +1,6 @@
 # BANZAI UI
 
-**Version 1.5.0** - World of Warcraft Retail 12.1.5 (Interface 120105) and WoW Forever 1.60.1 (Interface 16001). One package for both clients; WoW Forever specifics: [WOW-FOREVER.md](WOW-FOREVER.md).
+**Version 1.5.1** - World of Warcraft Retail 12.1.5 (Interface 120105) and WoW Forever 1.60.1 (Interface 16001). One package for both clients; WoW Forever specifics: [WOW-FOREVER.md](WOW-FOREVER.md).
 
 BANZAI UI is a complete ElvUI-based look for World of Warcraft: a bamboo construction around chat, meters, minimap and buffs, a green -> emerald -> violet -> purple identity gradient on every frame, and Darren's original class identity artwork for all thirteen classes. It installs as two addons:
 
