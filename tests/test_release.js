@@ -1,5 +1,5 @@
 // 1.5.0: the release tooling - what may be in a package (tools/release.js scan), which clients a package is for
-// (release.json), how they are named to CurseForge and Wago (tools/publish.js), and that the public source keeps
+// (release.json), how they are named to CurseForge (tools/publish.js), and that the public source keeps
 // nothing private (the tracked tools carry no user path). Pure node; no network, nothing written.
 'use strict';
 
@@ -70,8 +70,6 @@ function run() {
     expectEq(publish.patchOf(120105), '12.1.5', 'Retail patch');
     expectEq(publish.patchOf(16001), '1.60.1', 'Forever patch');
     expectEq(publish.CURSE_TYPE.mainline + '/' + publish.CURSE_TYPE.forever, '517/88568', 'CurseForge game-version types');
-    expectEq(publish.WAGO_KEY.mainline + '/' + publish.WAGO_KEY.forever, 'supported_retail_patches/supported_forever_patches', 'Wago keys');
-    expectEq(publish.WAGO_DATA.forever, 'forever', 'Wago game data name');
   });
 
   test('the two TOCs: one release version, both clients, the project IDs, no game-type restriction', () => {
@@ -82,7 +80,6 @@ function run() {
     for (const toc of tocs) {
       expectEq(field(toc, 'Interface'), '120105, 16001', 'Retail and WoW Forever in one TOC');
       expectEq(field(toc, 'X-Curse-Project-ID'), '1793334', 'CurseForge project');
-      expectEq(field(toc, 'X-Wago-ID'), 'BKpEZrGE', 'Wago project');
       expect(!/AllowLoadGameType|ExcludeLoadGameType/.test(toc), 'no game-type restriction');
     }
     expectEq(field(tocs[0], 'Dependencies') + ' | ' + field(tocs[1], 'Dependencies'), 'ElvUI, JiberishMedia | ElvUI', 'required addons as in 1.4.0');
@@ -104,8 +101,15 @@ function run() {
     const workflow = fs.readFileSync(path.join(ROOT, '.github', 'workflows', 'release.yml'), 'utf8');
     expect(/node tools\/fetch-references\.js/.test(workflow) && /node tools\/release\.js/.test(workflow), 'the workflow fetches the public references and builds the package itself');
     expect(/the built package is not the reviewed package/.test(workflow), 'and refuses a package that is not the reviewed one');
-    expect(/already exists - nothing is published twice/.test(workflow), 'and never publishes a tag twice');
-    expect(!/CF_API_KEY: [^$]|WAGO_API_TOKEN: [^$]/.test(workflow), 'secrets only by reference');
+    expect(/a different package - nothing is replaced/.test(workflow), 'and never replaces a published release');
+    expect(!/CF_API_KEY: [^$]/.test(workflow), 'the secret only by reference');
+    // 1.5.1: GitHub and CurseForge only. Wago is not a release channel, and no Wago credential is asked for.
+    expect(!/wago/i.test(workflow.replace(/^\s*#.*$/gm, '')), 'the workflow has no Wago step and needs no Wago secret');
+    expect(!/wago\.io|WAGO_API_TOKEN/i.test(fs.readFileSync(path.join(ROOT, 'tools', 'publish.js'), 'utf8')), 'the publisher uploads nothing to Wago');
+    expect(workflow.indexOf('gh release create') > 0 && workflow.indexOf('gh release create') < workflow.indexOf('node tools/publish.js curseforge'), 'the GitHub Release is made before CurseForge is tried');
+    const steps = workflow.replace(/\r\n/g, '\n').split(/\n      - /);
+    const releaseStep = steps.findIndex((s) => s.includes('gh release create'));
+    for (const step of steps.slice(0, releaseStep)) expect(!/secrets\.CF_API_KEY/.test(step) || /continue-on-error: true/.test(step), 'no step before the GitHub Release can fail on CurseForge');
   });
 
   const failed = results.filter((r) => !r.ok);

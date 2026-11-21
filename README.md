@@ -46,5 +46,36 @@ node tools/release.js            # release/BANZAI-UI-<version>.zip, its SHA-256 
 ```
 
 The same source always gives the same zip (sorted entries, fixed timestamps); the SHA-256 reviewed for each
-release is committed beside its notes in `release-notes/`. Releases are made by `.github/workflows/release.yml`
-on a `banzai-X.Y.Z` tag: GitHub Release, CurseForge and Wago from that one package.
+release is committed beside its notes in `release-notes/`.
+
+## Downloads and updates
+
+- **GitHub** - https://github.com/HardkorhPVP/BANZAI-UI/releases (the release asset `BANZAI-UI-<version>.zip`)
+- **CurseForge** - project 1793334
+- **WowUp** - follows the GitHub Release (Install from URL with this repository's address) or CurseForge
+- **Discord** - https://discord.gg/sv2WNwk2WZ for announcements and help
+
+GitHub and CurseForge carry the same file, byte for byte. BANZAI UI is no longer updated on Wago: the page
+there stops at 1.4.0.
+
+## Releasing (maintainers)
+
+Releases are made by `.github/workflows/release.yml` when a `banzai-X.Y.Z` tag is pushed:
+
+1. Implement, and validate in game on both clients.
+2. Set the version (both TOCs, `package.json`), write `docs/banzai-ui/CHANGELOG.md` and
+   `release-notes/BANZAI-UI-X.Y.Z.md`, build the package and commit its reviewed checksum as
+   `release-notes/BANZAI-UI-X.Y.Z.sha256`.
+3. Commit, and push the public source to `main`.
+4. Create the tag `banzai-X.Y.Z` on that commit and push it.
+5. GitHub Actions builds, tests, packages and refuses a package whose SHA-256 is not the committed one.
+6. The GitHub Release is published with the zip, its `.sha256` and `release.json`.
+7. The same zip is uploaded to CurseForge; the game-version IDs are looked up in CurseForge's current list
+   for the clients named by the TOCs' `## Interface:` line.
+8. Download the file from GitHub and from CurseForge and compare both with the committed SHA-256.
+9. WowUp picks the release up from GitHub / CurseForge; nothing is packaged separately for it.
+
+The GitHub Release never depends on CurseForge. If the CurseForge step fails, the job fails and says why, the
+GitHub Release stays, and re-running the failed job retries CurseForge only. The one secret is `CF_API_KEY`
+(a CurseForge API token, repository secret). Run the workflow by hand (Actions > Release > Run workflow) for a
+dry run that uploads nothing.

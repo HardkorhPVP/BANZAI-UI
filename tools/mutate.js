@@ -436,7 +436,6 @@ const MUTANTS_RELEASE = [
   ['clients', RELEASE_JS, 'Retail is advertised as WoW Forever', "(n >= 16000 && n < 17000 ? 'forever' : 'mainline')", "(n >= 16000 ? 'forever' : 'mainline')", 'release'],
   ['clients', RELEASE_JS, 'WoW Forever is advertised as Retail', "(n >= 16000 && n < 17000 ? 'forever' : 'mainline')", "(n >= 16000 && n < 17000 ? 'mainline' : 'mainline')", 'release'],
   ['clients', PUBLISH_JS, 'the patch string is derived wrongly', '`${Math.floor(n / 10000)}.', '`${Math.floor(n / 1000)}.', 'release'],
-  ['clients', PUBLISH_JS, 'WoW Forever is sent to Wago under the Retail key', "forever: 'supported_forever_patches'", "forever: 'supported_retail_patches'", 'release'],
   ['clients', PUBLISH_JS, 'WoW Forever is sent to CurseForge as a Retail version', 'forever: 88568', 'forever: 517', 'release'],
 ];
 // 1.5.1 BANZAI Weave (dev2: the approved slashed surface, filled and empty part alike): only the contracts of the bar
