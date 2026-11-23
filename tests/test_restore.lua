@@ -110,7 +110,7 @@ test('first login applies nothing by itself (public release: AUTO_APPLY is empty
 	expectEq(E.data:GetCurrentProfile(), NAME, 'ElvUI profile switched')
 	expectEq(HK_POPUPS[#HK_POPUPS], 'BANZAI_RELOAD', 'reload prompt')
 	expectEq(record().layer, T.LAYER, "Banzai layer " .. T.LAYER .. " recorded")
-	expectEq(record().applied.version, '1.5.1', 'version recorded')
+	expectEq(record().applied.version, '1.5.2', 'version recorded')
 end)
 
 test('existing ElvUI profiles are untouched; previous state recorded', function()
@@ -417,11 +417,11 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 	expect(string.find(page.args.brand.image(), 'BanzaiLogo', 1, true), 'Banzai logo above the list')
 	local brand = HK_Plain(page.args.brand.name())
 	expect(string.find(brand, 'UI BY HARDKORH', 1, true), 'UI BY HARDKORH')
-	expect(string.find(brand, 'BANZAI 1.5.1', 1, true), 'version in the GUI')
+	expect(string.find(brand, 'BANZAI 1.5.2', 1, true), 'version in the GUI')
 	expect(string.find(brand, 'release', 1, true) and not string.find(brand, 'PROOF', 1, true), 'the channel: a release, no proof label')
-	expect(string.find(HK_Plain(page.args.home.args.header.name), 'BANZAI 1.5.1', 1, true), 'version on HOME')
+	expect(string.find(HK_Plain(page.args.home.args.header.name), 'BANZAI 1.5.2', 1, true), 'version on HOME')
 	local home = HK_Plain(page.args.home.args.status.name())
-	for _, needle in ipairs({ 'BANZAI 1.5.1', 'Darrensdrood - Stormrage', 'Druid', 'Feral', 'SPEC ROLE   DPS', NAME, 'ACTIVE', 'CHARACTER SYNC', 'BANZAI MASTER', 'COMPONENTS' }) do
+	for _, needle in ipairs({ 'BANZAI 1.5.2', 'Darrensdrood - Stormrage', 'Druid', 'Feral', 'SPEC ROLE   DPS', NAME, 'ACTIVE', 'CHARACTER SYNC', 'BANZAI MASTER', 'COMPONENTS' }) do
 		expect(string.find(home, needle, 1, true), 'HOME shows ' .. needle)
 	end
 	expectEq(Find(page.args.home, 'apply').type, 'execute', 'Apply / repair')
@@ -510,7 +510,7 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 	-- CHARACTER SYNC: status cards and buttons, no console dump
 	local sync = SyncCards()
 	expectEq(page.args.sync.childGroups, 'tab', '1.0.1: STATUS / WHAT SYNCS / DIAGNOSTICS')
-	expect(string.find(HK_Plain(page.args.sync.args.header.name()), 'BANZAI 1.5.1', 1, true), 'the version on CHARACTER SYNC')
+	expect(string.find(HK_Plain(page.args.sync.args.header.name()), 'BANZAI 1.5.2', 1, true), 'the version on CHARACTER SYNC')
 	for _, card in ipairs({ 'this', 'master', 'version', 'synced', 'owned', 'never', 'components', 'characters' }) do
 		expectEq(sync[card].type, 'group', 'card ' .. card)
 		expectEq(sync[card].inline, true, card .. ' drawn as a card')
@@ -528,7 +528,7 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 		expect(string.find(plan, needle, 1, true), 'synced: ' .. needle)
 	end
 	expectEq(Find(page.args.backup, 'restore').disabled(), false, 'restore available')
-	expect(string.find(HK_Plain(page.args.backup.args.snapshot.args.status.name()), 'Banzai 1.5.1 applied', 1, true), 'current snapshot')
+	expect(string.find(HK_Plain(page.args.backup.args.snapshot.args.status.name()), 'Banzai 1.5.2 applied', 1, true), 'current snapshot')
 end)
 
 test('BANZAI options: 0.4.0 settings write the Banzai profile and the art settings', function()
@@ -789,10 +789,10 @@ test('upgrade from 0.3.0 at addon load: used on this login, no reload prompt', f
 	expectEq(ns.Restore:OnLogin(), true, 'completed after login')
 	expectEq(HK_DetailsWindow2.libwindow.x, -47.15, 'Details composition')
 	expectEq(r.layer, T.LAYER, 'layer recorded')
-	expectEq(r.applied.version, '1.5.1', 'version recorded')
+	expectEq(r.applied.version, '1.5.2', 'version recorded')
 	expectEq(r.previous.elvProfile, 'HARDKORHUI', 'original previous profile kept for rollback')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.1', 1, true), 'update reported in chat')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.2', 1, true), 'update reported in chat')
 	expectEq(ns.Restore:OnLogin(), nil, 'runs once')
 end)
 
@@ -834,7 +834,7 @@ test('upgrade from 0.4.0 at addon load: smooth bars, cooldown bars off, action b
 	expectEq(p.darrenTweak, 'kept', 'unrelated keys kept')
 	expectEq(ns.Restore:OnLogin(), true, 'completed after login')
 	expectEq(r.layer, T.LAYER, 'current layer')
-	expectEq(r.applied.version, '1.5.1', 'version')
+	expectEq(r.applied.version, '1.5.2', 'version')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectEq(r.previous.minimapButton.y, MBB_Y, 'rollback record kept')
 end)
@@ -917,7 +917,7 @@ test('/banzai opens the BANZAI options on HOME; status shows BANZAI 1.2.1; /bush
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('status')
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.5.1', 1, true), 'status reports BANZAI 1.5.1')
+	expect(string.find(text, 'BANZAI 1.5.2', 1, true), 'status reports BANZAI 1.5.1')
 	expect(string.find(text, 'Player / Target / Focus / Target-of-Target 50% of Bushido\'s width, AFK screen: Banzai, tooltip theme: BANZAI', 1, true), '1.0.0 state reported')
 	expect(string.find(text, 'spec role: DPS (Feral), frame layout in use: DPS', 1, true), 'role reported')
 	expect(string.find(text, 'character sync: ', 1, true), 'sync state reported')
@@ -926,7 +926,7 @@ test('/banzai opens the BANZAI options on HOME; status shows BANZAI 1.2.1; /bush
 	expect(string.find(text, 'target cooldown bars (ElvUI 2 + 4): off', 1, true), 'cooldown bars reported')
 	expect(string.find(text, 'Banzai tracker: on', 1, true), 'tracker state reported')
 	expect(string.find(text, 'all present', 1, true), 'status-bar textures reported present')
-	expectEq(StaticPopupDialogs.BANZAI_RELOAD.text:find('1.5.1', 1, true) ~= nil, true, 'reload dialog names 1.5.1')
+	expectEq(StaticPopupDialogs.BANZAI_RELOAD.text:find('1.5.2', 1, true) ~= nil, true, 'reload dialog names 1.5.2')
 end)
 
 ---------------------------------------------------------------------------
@@ -1108,7 +1108,7 @@ test('character sync: BANZAI MASTER captured, alt applied with its backup, visua
 	expectEq(m.class, 'Druid', 'class')
 	expectEq(m.spec, 'Feral', 'spec')
 	expectEq(m.role, 'DPS', 'role')
-	expectEq(m.version, '1.5.1', 'Banzai version')
+	expectEq(m.version, '1.5.2', 'Banzai version')
 	expectEq(m.schema, ns.Sync.SCHEMA, 'configuration schema')
 	expectEq(m.specID, 103, 'spec id')
 	expectEq(m.revision, 1, 'configuration #1')
@@ -1119,7 +1119,7 @@ test('character sync: BANZAI MASTER captured, alt applied with its backup, visua
 	S:Capture()
 	expectEq(m.revision, 1, 'nothing changed: same revision')
 	local card = HK_Plain(page.master.args.info.name())
-	for _, needle in ipairs({ KEY, 'Druid', 'FERAL', 'DPS', '1.5.1', 'SCHEMA 3', '#1' }) do expect(string.find(card, needle, 1, true), 'master card shows ' .. needle) end
+	for _, needle in ipairs({ KEY, 'Druid', 'FERAL', 'DPS', '1.5.2', 'SCHEMA 3', '#1' }) do expect(string.find(card, needle, 1, true), 'master card shows ' .. needle) end
 	expect(string.find(HK_Plain(page.version.args.text.name()), 'In step', 1, true), 'version drift: none')
 	expectEq(page.master.args.capture.hidden(), false, 'CAPTURE MASTER NOW on the master')
 
@@ -1844,7 +1844,7 @@ test('1.0.1 sync: no master until Darren sets one; SET AS BANZAI MASTER captures
 	cards.master.args.setMaster.func()
 	local m = S:Master()
 	expectEq(m.key .. '|' .. m.classToken .. '|' .. m.spec .. '|' .. m.role, KEY .. '|DRUID|Balance|DPS', 'identity: character, class, spec, role')
-	expectEq(m.version .. '|' .. m.schema, '1.5.1|' .. S.SCHEMA, 'BANZAI version and configuration schema')
+	expectEq(m.version .. '|' .. m.schema, '1.5.2|' .. S.SCHEMA, 'BANZAI version and configuration schema')
 	local keys = {}
 	for k in pairs(m.config) do keys[#keys + 1] = k end
 	table.sort(keys)
@@ -1855,7 +1855,7 @@ test('1.0.1 sync: no master until Darren sets one; SET AS BANZAI MASTER captures
 	local text = T.Serialize(m.config)
 	for _, word in ipairs({ 'Balance', 'Feral', 'Druid', 'Restoration' }) do expect(not string.find(text, word, 1, true), 'no Druid identity in the setup (' .. word .. ')') end
 	local card = HK_Plain(cards.master.args.info.name())
-	for _, needle in ipairs({ KEY, 'Druid', 'BALANCE', 'DPS', 'BANZAI 1.5.1', 'SCHEMA ' .. S.SCHEMA, '#' }) do expect(string.find(card, needle, 1, true), 'master card: ' .. needle) end
+	for _, needle in ipairs({ KEY, 'Druid', 'BALANCE', 'DPS', 'BANZAI 1.5.2', 'SCHEMA ' .. S.SCHEMA, '#' }) do expect(string.find(card, needle, 1, true), 'master card: ' .. needle) end
 	expectEq(cards.master.args.setMaster.hidden(), true, 'set')
 	expectEq(cards.master.args.capture.hidden(), false, 'CAPTURE MASTER NOW on the master')
 end)
@@ -1882,7 +1882,7 @@ test('1.0.1 sync: an unsynced alt stays untouched until Darren clicks - no autom
 	expectEq(cards.this.args.apply.hidden(), false, 'APPLY BANZAI offered')
 	expectEq(cards.this.args.restore.hidden(), true, 'nothing to restore')
 	local status = HK_Plain(cards.synced.args.list.name())
-	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'MASTER BANZAI VERSION   1.5.1', 'THIS CHARACTER   ' .. ROGUE, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   none', 'SYNC STATE   THIS CHARACTER IS NOT SYNCED' }) do
+	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'MASTER BANZAI VERSION   1.5.2', 'THIS CHARACTER   ' .. ROGUE, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   none', 'SYNC STATE   THIS CHARACTER IS NOT SYNCED' }) do
 		expect(string.find(status, needle, 1, true), 'sync status: ' .. needle)
 	end
 	local diag = HK_Plain(cards.components.args.list.name())
@@ -1950,7 +1950,7 @@ test('1.0.1 sync: APPLY BANZAI on a DPS alt - backup first, its own class / spec
 	expectEq(HasKey(compatDB(), { 'classtoken', 'spec', 'specid' }), nil, 'no class / spec identity in its BANZAI settings')
 	expect(compat.cdTracked.ROGUE[5277] == false and compat.cdTracked.DRUID == nil, 'its own tracked cooldowns kept, none of the Druid\'s')
 	local status = HK_Plain(cards.synced.args.list.name())
-	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   BANZAI 1.5.1, schema ' .. S.SCHEMA, 'SYNC STATE   BANZAI SYNCED' }) do
+	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   BANZAI 1.5.2, schema ' .. S.SCHEMA, 'SYNC STATE   BANZAI SYNCED' }) do
 		expect(string.find(status, needle, 1, true), 'sync status: ' .. needle)
 	end
 	-- gameplay
@@ -2294,7 +2294,7 @@ test('1.0.2 tracker: APPLY BANZAI with the Banzai tracker on parks Blizzard\'s t
 	HK_PRINTS = {}
 	ns.Restore:Status()
 	expect(string.find(table.concat(HK_PRINTS, '\n'), 'Blizzard\'s tracker: parked while the Banzai tracker shows', 1, true), '/banzai status says so')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.5.1', 1, true), '/banzai status: 1.5.1')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.5.2', 1, true), '/banzai status: 1.5.1')
 	expectEq(#HK_GAMEPLAY_CALLS, 0, 'no gameplay call')
 end)
 
@@ -3058,7 +3058,7 @@ test('1.3.0 /banzai status names the frame style (chosen and this session\'s) an
 	ns.Restore:Status()
 	local text = table.concat(HK_PRINTS, '\n')
 	expect(string.find(text, 'frame style: BANZAI CLASSIC (this session: BANZAI CLASSIC), Details meter style: BANZAI CURRENT', 1, true), 'status line')
-	expect(string.find(text, 'BANZAI 1.5.1', 1, true), 'version')
+	expect(string.find(text, 'BANZAI 1.5.2', 1, true), 'version')
 end)
 
 test('1.3.0 review: the health-percentage switch keeps working while the profile carries the split layer (health under the bars)', function()
@@ -3234,7 +3234,7 @@ test('licensed display-font status and texts: /banzai status identifies Shojumar
 	HK_PRINTS = {}
 	ns.Restore:Status()
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.5.1', 1, true), 'status: BANZAI 1.5.1')
+	expect(string.find(text, 'BANZAI 1.5.2', 1, true), 'status: BANZAI 1.5.1')
 	expect(string.find(text, 'Display font: Shojumaru at 105%, license: SIL Open Font License 1.1, registered:', 1, true), 'status: licensed Shojumaru default at 105%')
 	CompatStub.Theme = nil
 	local page = ns.Options:Build()
@@ -3349,9 +3349,9 @@ test('licensed selection-lock version-only update (no layer key, no setting, no 
 	r.applied.version = '1.3.4'
 	HK_PRINTS, HK_POPUPS = {}, {}
 	expectEq(ns.Restore:OnLogin(), true, 'the update runs at login')
-	expectEq(r.applied.version, '1.5.1', 'version recorded')
+	expectEq(r.applied.version, '1.5.2', 'version recorded')
 	local said = table.concat(HK_PRINTS, '\n')
-	expect(string.find(said, 'updated to BANZAI 1.5.1 (Retail 12.1.5 (build 69848, Interface 120105)): BANZAI Weave is the new default bar texture; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', 1, true), 'the update names the release, the client and the new default bar texture')
+	expect(string.find(said, 'updated to BANZAI 1.5.2 (Retail 12.1.5 (build 69848, Interface 120105)): BANZAI Weave now covers party, raid, boss and arena enemy frames, and arena enemies show as one frame system; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', 1, true), 'the update names the release, the client and what is new')
 	expect(string.find(said, '/banzai forever shows the client report', 1, true), 'and where the client report is')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectEq(r.layer, T.LAYER, 'the layer as it was')
@@ -3417,8 +3417,8 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	HK_PRINTS, HK_POPUPS = {}, {}
 	local n0 = #HK_TIMERS
 	expectEq(R:OnLogin(), true, 'the update runs at login')
-	expectEq(r.applied.version, '1.5.1', 'version recorded')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.1 (Retail 12.1.5', 1, true), 'the chat names the release and the client')
+	expectEq(r.applied.version, '1.5.2', 'version recorded')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.2 (Retail 12.1.5', 1, true), 'the chat names the release and the client')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectNear(left.posicao.normal.w, 207.5 / 0.75, 'left window narrower')
 	expectNear(right.posicao.normal.w, 207.5 / 0.75, 'right window narrower')
@@ -3526,4 +3526,321 @@ test('1.5.1 BAR TEXTURE: one radio choice on APPEARANCE (BANZAI Weave, BANZAI Sm
 	expect(string.find(ns.Restore:BarTextureText(), 'BANZAI Weave (not available on this install: BANZAI Smooth is drawn)', 1, true), 'the fallback is named: ' .. ns.Restore:BarTextureText())
 	CompatStub.Theme = nil
 	compat.barTexture = 'SMOOTH'
+end)
+
+---------------------------------------------------------------------------
+-- 1.5.2 ONE arena enemy system
+---------------------------------------------------------------------------
+test('1.5.2 arena provider (Transform): ElvUI\'s arena frames are the one system - a private profile that lets the game\'s own arena frames show too is the duplicate, and only that one key is switched', function()
+	expectEq(T.ARENA_PROVIDER, 'ELVUI', 'the retained provider')
+	expectEq(table.concat(T.ARENA_PROVIDER_PATH, '.'), 'unitframe.disabledBlizzardFrames.arena', 'ElvUI\'s own setting')
+	-- ElvUI stores only what differs from its default (on): a profile without the key is fine
+	expectEq(T.ArenaProviderState(nil), 'ELVUI', 'no profile')
+	expectEq(T.ArenaProviderState({}), 'ELVUI', 'an untouched profile')
+	expectEq(T.ArenaProviderState({ unitframe = { disabledBlizzardFrames = {} } }), 'ELVUI', 'the key never changed')
+	expectEq(T.ArenaProviderState({ unitframe = { disabledBlizzardFrames = { arena = true } } }), 'ELVUI', 'on')
+	expectEq(T.ArenaProviderState({ unitframe = { disabledBlizzardFrames = { arena = false } } }), 'BOTH', 'off: both sets show')
+	expectEq(T.ApplyArenaProvider({}), false, 'nothing to do, nothing written')
+	local untouched = {}
+	T.ApplyArenaProvider(untouched)
+	expectEq(next(untouched), nil, 'no key is created in a profile that is fine')
+	local p = { unitframe = { enable = true, disabledBlizzardFrames = { arena = false, party = false, raid = false, boss = false, player = false, castbar = false } }, chat = { enable = false } }
+	expectEq(T.ApplyArenaProvider(p), true, 'the duplicate is switched off: changed')
+	expectEq(p.unitframe.disabledBlizzardFrames.arena, true, 'ElvUI puts the game\'s arena frames away')
+	local d = p.unitframe.disabledBlizzardFrames
+	expectEq(tostring(d.party) .. tostring(d.raid) .. tostring(d.boss) .. tostring(d.player) .. tostring(d.castbar), 'falsefalsefalsefalsefalse', 'no other Blizzard frame setting is touched')
+	expectEq(p.chat.enable, false, 'nothing else either')
+	expectEq(T.ApplyArenaProvider(p), false, 'a second time: nothing to do')
+	-- a new BANZAI private profile is copied from the character's previous one: the duplicate does not come along
+	local made = T.TransformPrivate(P.elvuiPrivate, { unitframe = { disabledBlizzardFrames = { arena = false, party = false } } }, 'Rubik-Bold', function() return true end, 'Rubik-Regular')
+	expectEq(T.ArenaProviderState(made), 'ELVUI', 'APPLY BANZAI: one arena system')
+	expectEq(made.unitframe.disabledBlizzardFrames.party, false, 'the character\'s other choices are kept')
+	-- ElvUI's arena frames stay on (the layer has switched them on since 1.0.1)
+	local layer = { unitframe = { units = { arena = { enable = false } } } }
+	T.ApplyPvP(layer, {}, {})
+	expectEq(layer.unitframe.units.arena.enable, true, 'the retained provider is enabled by the BANZAI layer')
+	-- no arena addon is named in the profile transform
+	expectEq(HK_FindString(T.ROLE_LAYOUTS, 'sArena'), nil, 'no sArena in the layouts')
+end)
+
+-- the character on the BANZAI profiles, with a private profile that still shows the game's arena frames
+local function BanzaiCharacter()
+	local saved = { elvKey = ElvDB.profileKeys and ElvDB.profileKeys[KEY], privateKey = ElvPrivateDB.profileKeys[KEY], private = ElvPrivateDB.profiles[NAME], applied = record() and record().applied,
+		arenaProvider = record() and record().arenaProvider }
+	ElvDB.profileKeys = ElvDB.profileKeys or {}
+	ElvDB.profileKeys[KEY] = NAME
+	ElvPrivateDB.profileKeys[KEY] = NAME
+	ElvPrivateDB.profiles[NAME] = { unitframe = { enable = true, disabledBlizzardFrames = { arena = false, party = false } } }
+	BushidoPrivateRestoreDB.characters[KEY] = BushidoPrivateRestoreDB.characters[KEY] or {}
+	record().applied = record().applied or { version = ns.VERSION, time = 'test' }
+	record().arenaProvider = nil
+	return function()
+		ElvDB.profileKeys[KEY], ElvPrivateDB.profileKeys[KEY], ElvPrivateDB.profiles[NAME] = saved.elvKey, saved.privateKey, saved.private
+		record().applied, record().arenaProvider = saved.applied, saved.arenaProvider
+		ns.Restore.arenaProviderPending = nil
+		HK_IN_COMBAT = false
+	end
+end
+local function ArenaSetting() return ElvPrivateDB.profiles[NAME].unitframe.disabledBlizzardFrames.arena end
+
+test('1.5.2 arena provider (Restore): the duplicate is switched off in the saved setting while the addons load and the login check asks for the one reload ElvUI needs; in combat nothing is shown or written late until combat ends; a character who switched ElvUI\'s arena frames off, another profile or an unapplied character is left alone', function()
+	local R = ns.Restore
+	local back = BanzaiCharacter()
+	local function Off() ElvPrivateDB.profiles[NAME].unitframe.disabledBlizzardFrames.arena = false end
+	-- while the addons load: the saved setting only (ElvUI has already read the old one: nothing is claimed, nothing shown yet)
+	HK_PRINTS, HK_POPUPS = {}, {}
+	expectEq(R:ArenaProvider('addon loaded'), 'CHANGED', 'switched while loading')
+	expectEq(ArenaSetting(), true, 'ElvUI > Disabled Blizzard Frames > Arena is on')
+	expectEq(ElvPrivateDB.profiles[NAME].unitframe.disabledBlizzardFrames.party, false, 'only that key')
+	expectEq(#HK_POPUPS + #HK_PRINTS, 0, 'nothing is shown while the addons load')
+	expectEq(record().arenaProvider.retained .. '|' .. record().arenaProvider.was .. '|' .. record().arenaProvider.version, 'ELVUI|BOTH|' .. ns.VERSION, 'the decision is recorded')
+	expectEq(R:ArenaProvider('addon loaded'), 'ELVUI', 'asked again while loading: nothing more to write')
+	expectEq(#HK_POPUPS, 0, 'and still nothing shown')
+	-- the login check: ElvUI runs this session with the old value, so the reload is asked for - once
+	expectEq(R:ArenaProvider('login'), 'CHANGED', 'the login check reports the change')
+	expectEq(HK_POPUPS[1], 'BANZAI_RELOAD', 'a reload is asked for (ElvUI read the setting before BANZAI loaded)')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'Disabled Blizzard Frames > Arena', 1, true), 'the chat names ElvUI\'s own setting')
+	HK_PRINTS, HK_POPUPS = {}, {}
+	expectEq(R:ArenaProvider('login'), 'ELVUI', 'after that: nothing to do')
+	HK_Fire('PLAYER_REGEN_ENABLED')
+	expectEq(#HK_POPUPS + #HK_PRINTS, 0, 'no second popup, no second line')
+	-- the whole load path (OnAddonLoaded), on a reload in combat: the saved setting is written, the question waits for the end of combat
+	Off()
+	HK_IN_COMBAT = true
+	R:OnAddonLoaded()
+	expectEq(ArenaSetting(), true, 'OnAddonLoaded writes the saved setting')
+	R:OnLogin() -- the login check, still in combat
+	expectEq(R.arenaProviderPending, true, 'the login check in combat: deferred')
+	expectEq(#HK_POPUPS, 0, 'no popup in combat')
+	expect(not string.find(table.concat(HK_PRINTS, '\n'), 'arena enemy frames', 1, true), 'no chat line in combat')
+	HK_Fire('PLAYER_REGEN_ENABLED') -- the client still says combat
+	expectEq(#HK_POPUPS, 0, 'a regen event while the client still says combat: nothing')
+	HK_IN_COMBAT = false
+	HK_Fire('PLAYER_REGEN_ENABLED')
+	expectEq(HK_POPUPS[1], 'BANZAI_RELOAD', 'after combat: the reload question')
+	expectEq(R.arenaProviderPending, nil, 'nothing waits')
+	HK_POPUPS = {}
+	HK_Fire('PLAYER_REGEN_ENABLED')
+	expectEq(#HK_POPUPS, 0, 'the end of the next combat does nothing')
+	-- switched off again during the session, found in combat: nothing is written, nothing is shown
+	Off()
+	HK_PRINTS, HK_POPUPS = {}, {}
+	HK_IN_COMBAT = true
+	expectEq(R:ArenaProvider('login'), 'DEFERRED', 'in combat: deferred')
+	expectEq(ArenaSetting(), false, 'the setting is not written in combat')
+	expectEq(#HK_POPUPS + #HK_PRINTS, 0, 'no popup, no chat line in combat')
+	expectEq(R.arenaProviderPending, true, 'it waits')
+	HK_IN_COMBAT = false
+	HK_Fire('PLAYER_REGEN_ENABLED')
+	expectEq(ArenaSetting(), true, 'after combat: switched')
+	expectEq(HK_POPUPS[1], 'BANZAI_RELOAD', 'and the reload asked for')
+	-- out of combat, late: written and asked at once
+	Off()
+	HK_POPUPS = {}
+	expectEq(R:ArenaProvider('login'), 'CHANGED', 'late, out of combat')
+	expectEq(tostring(ArenaSetting()) .. '|' .. tostring(HK_POPUPS[1]), 'true|BANZAI_RELOAD', 'written, reload asked for')
+	-- a character who switched ElvUI's arena frames off keeps the game's own: BANZAI does not take both away
+	ElvDB.profiles[NAME] = ElvDB.profiles[NAME] or {}
+	local shared = ElvDB.profiles[NAME]
+	local wasUF = shared.unitframe
+	shared.unitframe = { units = { arena = { enable = false } } }
+	Off()
+	HK_POPUPS = {}
+	expectEq(R:ArenaProvider('addon loaded'), 'NOT RETAINED', 'ElvUI\'s arena frames are off: not retained')
+	expectEq(R:ArenaProvider('login'), 'NOT RETAINED', 'at the login check too')
+	expectEq(tostring(ArenaSetting()) .. '|' .. #HK_POPUPS, 'false|0', 'the game\'s arena frames stay, nothing is asked')
+	shared.unitframe = wasUF
+	-- a character on another private profile: untouched
+	ElvPrivateDB.profileKeys[KEY] = 'breezy'
+	ElvPrivateDB.profiles.breezy.unitframe = { disabledBlizzardFrames = { arena = false } }
+	expectEq(R:ArenaProvider('login'), 'NOT BANZAI', 'not on the BANZAI private profile')
+	expectEq(R:ArenaProvider('addon loaded'), 'NOT BANZAI', 'nor while loading')
+	expectEq(ElvPrivateDB.profiles.breezy.unitframe.disabledBlizzardFrames.arena, false, 'the other profile keeps its choice')
+	expectEq(ArenaSetting(), false, 'and the BANZAI profile is not written for a character that does not use it')
+	ElvPrivateDB.profiles.breezy.unitframe = nil
+	ElvPrivateDB.profileKeys[KEY] = NAME
+	-- another ElvUI profile: untouched
+	ElvDB.profileKeys[KEY] = 'breezy'
+	expectEq(R:ArenaProvider('login'), 'NOT BANZAI', 'not on the BANZAI profile')
+	ElvDB.profileKeys[KEY] = NAME
+	-- a character BANZAI was never applied to: untouched
+	local applied = record().applied
+	record().applied = nil
+	expectEq(R:ArenaProvider('addon loaded'), 'NOT BANZAI', 'never applied')
+	expectEq(ArenaSetting(), false, 'nothing written')
+	record().applied = applied
+	expectEq(#HK_POPUPS, 0, 'none of these asked for anything')
+	R.arenaProviderReload = nil
+	back()
+end)
+
+test('1.5.2 /banzai arena: both systems are found and named by owner, the duplicate and its cause are stated, ElvUI\'s frames are the recommendation - and asking changes nothing (no frame, no setting, no popup); a forbidden frame is asked nothing', function()
+	local R = ns.Restore
+	local back = BanzaiCharacter()
+	local wasPrivate, wasDB, wasHidden, wasLoaded = E.private, E.db, E.HiddenFrame, HK_LOADED.sArena_Reloaded
+	E.private = { unitframe = { enable = true, disabledBlizzardFrames = { arena = false } } }
+	E.db = { unitframe = { units = { arena = { enable = true } } }, movers = { ArenaHeaderMover = 'BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-54,454' } }
+	E.HiddenFrame = HK_NewFrame('Frame', 'ElvUIHiddenFrame', UIParent)
+	local header = HK_NewFrame('Frame', 'ElvUF_ArenaHeader', UIParent)
+	local frames = {}
+	for i = 1, 5 do
+		local f = HK_NewFrame('Button', 'ElvUF_Arena' .. i, header)
+		f.attributes = { unit = 'arena' .. i }
+		f.Health = HK_NewFrame('StatusBar', nil, f)
+		f.IsProtected = function() return true end
+		f.GetDebugName = function(self) return self.name end
+		f.GetPoint = function() return 'BOTTOMRIGHT', header, 'BOTTOMRIGHT', 0, (i - 1) * 43 end
+		f.shown = false
+		frames[i] = f
+	end
+	local compact = HK_NewFrame('Frame', 'CompactArenaFrame', UIParent)
+	compact.GetDebugName = function() return 'CompactArenaFrame' end
+	compact.shown = true
+	compact.memberUnitFrames = {}
+	for i = 1, 3 do
+		local m = HK_NewFrame('Button', 'CompactArenaFrameMember' .. i, compact)
+		m.attributes = { unit = 'arena' .. i }
+		m.GetDebugName = function(self) return self.name end
+		compact.memberUnitFrames[i] = m
+	end
+	local function World()
+		local parts = { tostring(ElvPrivateDB.profiles[NAME].unitframe.disabledBlizzardFrames.arena), tostring(E.private.unitframe.disabledBlizzardFrames.arena), tostring(compact.shown), tostring(compact.parent == UIParent), #compact.points }
+		for _, f in ipairs(frames) do parts[#parts + 1] = tostring(f.shown) .. tostring(f.parent == header) .. #f.points .. tostring(f.attributes.unit) end
+		return table.concat(parts, '|')
+	end
+	local world = World()
+	HK_PRINTS, HK_POPUPS = {}, {}
+
+	-- 1. the duplicate: ElvUI's frames and the game's own, both active
+	local state = R:ArenaSystems()
+	expectEq(state.retained, 'ELVUI', 'the provider BANZAI retains')
+	expectEq(#state.systems, 3, 'ElvUI, Blizzard, other addons')
+	local elv, blizzard, other = state.systems[1], state.systems[2], state.systems[3]
+	expectEq(elv.id .. '|' .. tostring(elv.active) .. '|' .. tostring(elv.enabled) .. '|' .. #elv.frames, 'ELVUI|true|true|5', 'ElvUI: enabled, five frames')
+	expect(string.find(elv.owner, 'ElvUI', 1, true), 'owned by ElvUI')
+	expectEq(elv.frames[2].name .. '|' .. elv.frames[2].unit .. '|' .. tostring(elv.frames[2].protected) .. '|' .. tostring(elv.frames[2].shown) .. '|' .. elv.frames[2].parent, 'ElvUF_Arena2|arena2|true|false|ElvUF_ArenaHeader',
+		'a frame by its own name, its secure unit attribute, protected, hidden outside an arena, its parent')
+	expect(string.find(elv.frames[2].anchor, 'BOTTOMRIGHT > ElvUF_ArenaHeader', 1, true), 'its anchor: ' .. tostring(elv.frames[2].anchor))
+	for i = 1, 5 do expectEq(elv.frames[i].unit, 'arena' .. i, 'arena' .. i .. ' is assigned to ElvUF_Arena' .. i) end
+	expectEq(elv.mover, 'BOTTOMRIGHT,UIParent,BOTTOMRIGHT,-54,454', 'where the header sits')
+	expectEq(blizzard.id .. '|' .. tostring(blizzard.active) .. '|' .. tostring(blizzard.loaded) .. '|' .. tostring(blizzard.putAway), 'BLIZZARD|true|true|false', 'Blizzard: loaded and not put away')
+	expect(string.find(blizzard.owner, 'Blizzard', 1, true), 'owned by Blizzard')
+	expectEq(#blizzard.frames, 4, 'the container and its three members')
+	expectEq(blizzard.frames[2].unit, 'arena1', 'the same enemy a second time')
+	expectEq(tostring(other.active) .. #other.addons, 'false0', 'no other arena addon')
+	expectEq(state.setting, false, 'ElvUI\'s setting, as this session runs it: off')
+	expectEq(table.concat(state.active, '+'), 'ELVUI+BLIZZARD', 'two active systems')
+	expectEq(state.duplicate, true, 'a duplicate')
+	local lines = R:ArenaReport()
+	local text = table.concat(lines, '\n')
+	for _, needle in ipairs({ ns.VERSION, 'read only', 'ElvUI arena frames [ACTIVE, RETAINED', 'Blizzard arena frames [ACTIVE - NOT put away by ElvUI]', 'Disabled Blizzard Frames > Arena: OFF', 'ElvUF_Arena1: unit arena1', 'protected yes',
+		'CompactArenaFrame', 'Other arena addons: none loaded', 'RESULT: DUPLICATE arena enemy frames (ELVUI + BLIZZARD)', 'the game\'s own arena frames are not put away', 'BANZAI keeps ElvUI\'s arena frames' }) do
+		expect(string.find(text, needle, 1, true), 'the report says: ' .. needle)
+	end
+	expect(#lines <= 16, 'concise: ' .. #lines .. ' lines')
+	expect(string.find(R:ArenaSummary(), 'DUPLICATE - ELVUI + BLIZZARD', 1, true), 'the status line: ' .. R:ArenaSummary())
+
+	-- 2. after the fix (ElvUI has put the game's frames under its hidden parent): one system
+	E.private.unitframe.disabledBlizzardFrames.arena = true
+	compact.parent = E.HiddenFrame
+	state = R:ArenaSystems()
+	expectEq(table.concat(state.active, '+') .. '|' .. tostring(state.duplicate), 'ELVUI|false', 'one active system')
+	expectEq(state.systems[2].putAway, true, 'the game\'s frames are put away by ElvUI')
+	text = table.concat(R:ArenaReport(), '\n')
+	expect(string.find(text, 'Blizzard arena frames [put away by ElvUI (its hidden parent)]', 1, true), 'said so')
+	expect(string.find(text, 'RESULT: ONE arena enemy system - ElvUI\'s arena frames in the BANZAI design. Recommended and retained.', 1, true), 'the result')
+	expect(not string.find(text, 'DUPLICATE', 1, true), 'no duplicate reported')
+	expect(string.find(R:ArenaSummary(), 'one system: ElvUI\'s arena frames in the BANZAI design', 1, true), 'the status line')
+	compact.parent = UIParent
+	E.private.unitframe.disabledBlizzardFrames.arena = false
+
+	-- 3. the game's arena UI not loaded yet: the setting alone decides what will show
+	_G.CompactArenaFrame = nil
+	state = R:ArenaSystems()
+	expectEq(tostring(state.systems[2].loaded) .. '|' .. tostring(state.systems[2].active), 'false|true', 'not loaded, but it will show: still a duplicate')
+	E.private.unitframe.disabledBlizzardFrames.arena = true
+	expectEq(R:ArenaSystems().duplicate, false, 'with ElvUI\'s setting on it will not')
+	E.private.unitframe.disabledBlizzardFrames.arena = false
+	_G.CompactArenaFrame = compact
+
+	-- 3b. ElvUI's setting cannot be read (and the game's arena UI is not loaded): unknown, never called OFF or a duplicate
+	_G.CompactArenaFrame = nil
+	local readable = E.private
+	E.private = { unitframe = { enable = true } }
+	state = R:ArenaSystems()
+	expectEq(tostring(state.setting) .. '|' .. tostring(state.systems[2].active) .. '|' .. tostring(state.duplicate), 'nil|false|false', 'unreadable: unknown, not a duplicate')
+	expect(string.find(table.concat(R:ArenaReport(), '\n'), 'Disabled Blizzard Frames > Arena: ?', 1, true), 'shown as ?')
+	E.private = readable
+	_G.CompactArenaFrame = compact
+
+	-- 4. another arena addon is reported (never managed, never needed)
+	HK_LOADED.sArena_Reloaded = true
+	state = R:ArenaSystems()
+	expectEq(table.concat(state.active, '+'), 'ELVUI+BLIZZARD+OTHER', 'three')
+	text = table.concat(R:ArenaReport(), '\n')
+	expect(string.find(text, 'Other arena addons: sArena_Reloaded', 1, true) and string.find(text, 'not managed by BANZAI', 1, true), 'named, and not BANZAI\'s')
+	expectEq(#HK_ADDON_CALLS, 0, 'no addon is enabled or disabled by BANZAI')
+	HK_LOADED.sArena_Reloaded = wasLoaded
+
+	-- 5. ElvUI's arena frames switched off: Blizzard's alone is one system, but not BANZAI's
+	E.db.unitframe.units.arena.enable = false
+	state = R:ArenaSystems()
+	expectEq(table.concat(state.active, '+') .. '|' .. tostring(state.duplicate), 'BLIZZARD|false', 'one system, not the retained one')
+	expect(string.find(table.concat(R:ArenaReport(), '\n'), 'not BANZAI\'s (BLIZZARD)', 1, true), 'said so')
+	expect(string.find(R:ArenaSummary(), 'one system, not BANZAI\'s: BLIZZARD', 1, true), 'and the status line does not call it BANZAI\'s: ' .. R:ArenaSummary())
+	E.db.unitframe.units.arena.enable = true
+
+	-- 6. a frame the client keeps from addons: asked nothing
+	HK_FORBIDDEN_CALLS = {}
+	frames[4].unit = 'arena4'
+	HK_Forbid(frames[4])
+	state = R:ArenaSystems()
+	expectEq(state.systems[1].frames[4].forbidden, true, 'a forbidden frame is reported as such')
+	expectEq(state.systems[1].frames[4].unit, nil, 'and nothing of it is read: not even a plain field')
+	frames[4].unit = nil
+	expectEq(#HK_FORBIDDEN_CALLS, 0, 'and not a single method of it was called')
+	expect(string.find(table.concat(R:ArenaReport(), '\n'), 'not asked', 1, true), 'the report says it was not asked')
+	expectEq(#HK_FORBIDDEN_CALLS, 0, 'the report neither')
+	setmetatable(frames[4], getmetatable(frames[3]))
+
+	-- 7. the slash commands, and: nothing was changed by any of it
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('arena')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'RESULT: DUPLICATE arena enemy frames', 1, true), '/banzai arena prints the report')
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('frames')
+	expect(#HK_PRINTS >= 1, '/banzai frames answers')
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('status')
+	local status = table.concat(HK_PRINTS, '\n')
+	expect(string.find(status, 'BANZAI ' .. ns.VERSION, 1, true), '/banzai status: the whole-product version')
+	expect(string.find(status, 'arena enemy frames: DUPLICATE', 1, true), '/banzai status: the arena line')
+	expect(string.find(status, '| arena | frames |', 1, true), 'both commands are listed')
+	expectEq(World(), world, 'READ ONLY: every frame, the saved setting and the running setting are exactly as before')
+	expectEq(#HK_POPUPS, 0, 'no popup')
+	expectEq(record().arenaProvider, nil, 'no decision was written by the diagnostic')
+
+	for i = 1, 5 do _G['ElvUF_Arena' .. i] = nil end
+	for i = 1, 3 do _G['CompactArenaFrameMember' .. i] = nil end
+	_G.CompactArenaFrame, _G.ElvUF_ArenaHeader, _G.ElvUIHiddenFrame = nil, nil, nil
+	E.private, E.db, E.HiddenFrame = wasPrivate, wasDB, wasHidden
+	back()
+end)
+
+test('1.5.2 no arena addon dependency: BANZAI names other arena addons only to report them - nothing loads, enables, requires or styles one', function()
+	local back = BanzaiCharacter()
+	local calls = #HK_ADDON_CALLS
+	HK_LOADED.sArena_Reloaded, HK_LOADED.Gladius = true, true -- both present: BANZAI still manages neither
+	ns.Restore:ArenaProvider('addon loaded')
+	ns.Restore:ArenaProvider('login')
+	ns.Restore:ArenaSystems()
+	ns.Restore:ArenaReport()
+	expectEq(#HK_ADDON_CALLS, calls, 'no addon was enabled or disabled by the provider switch or the diagnostic')
+	expectEq(ElvPrivateDB.profiles[NAME].unitframe.disabledBlizzardFrames.arena, true, 'the provider decision is the same with another arena addon loaded: ElvUI\'s frames, the game\'s put away')
+	HK_LOADED.sArena_Reloaded, HK_LOADED.Gladius = nil, nil
+	ns.Restore.arenaProviderReload = nil
+	back()
+	expectEq(HK_FindString(ns.Payloads, 'sArena'), nil, 'no sArena in the payloads')
+	expectEq(HK_FindString(T.PVP, 'sArena'), nil, 'none in the PvP layer')
+	expect(string.find(ns.Restore:PvPText(), 'arena enemies: Banzai mirrored frames', 1, true), 'the arena enemies are BANZAI\'s mirrored ElvUI frames')
 end)

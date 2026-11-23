@@ -2,7 +2,7 @@
 ## Title: |cff9cff4dBanzai|r
 ## Notes: BANZAI UI by HARDKORH. Settings, Character Sync and Restore Pre-Banzai. Settings: ElvUI options > BANZAI, or /banzai. Requires ElvUI; Banzai Art (BushidoPrivateCompat) and JiberishMedia for the full look.
 ## Author: HARDKORH
-## Version: 1.5.1
+## Version: 1.5.2
 ## X-Curse-Project-ID: 1793334
 ## X-Wago-ID: BKpEZrGE
 ## X-Website: https://github.com/HardkorhPVP/BANZAI-UI

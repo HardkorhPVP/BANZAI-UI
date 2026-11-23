@@ -4,6 +4,14 @@ PvP-first unit frames and your own cooldown bars, also used in PvE. Everything c
 
 Page: **BANZAI > PVP**, tabs **FRAMES**, **COOLDOWN BARS**, **PREVIEW**. Settings marked with *A reload applies it* take effect after a reload.
 
+## Arena enemy frames: one system
+
+BANZAI's arena enemy frames are **ElvUI's arena frames** (arena1 - arena5), in the Banzai design: compact, mirrored on the right edge, with the trinket circle, the class / spec circle, a cast bar above each frame, crowd control and defensive icons, the TARGET / FOCUS outlines, the bar texture in use (BANZAI Weave by default) and a thin lime-to-purple BANZAI outline around each health bar. The spec shown is only what the game itself gives for an arena opponent; nothing is inspected or guessed.
+
+The game's own arena frames would be a second set of the same enemies. ElvUI puts them away with its own setting (**ElvUI > UnitFrames > General > Disabled Blizzard Frames > Arena**, on by default). A character whose ElvUI private profile had that switched off showed both sets; BANZAI switches that one setting back on for a character on the BANZAI profiles and asks for one reload (never in combat: it waits for combat to end). A character who has switched ElvUI's arena frames off keeps the game's. No other Blizzard frame is affected, and **RESTORE PRE-BANZAI** returns the character to its previous ElvUI private profile.
+
+`/banzai arena` lists every arena frame system the session knows - owner, frames, units, whether it shows - and says whether there is a duplicate. It only reads; it changes nothing.
+
 ## FRAMES tab
 
 - **PARTY / ARENA FRAME SIZE > Enemy offensive / defensive icons** - enemies' big / external defensives and important buffs, shown small to the left of the trinket.
@@ -33,4 +41,4 @@ PvP presentation is implemented where WoW Forever supports it and validated offl
 
 ## Not changed
 
-Which spells you have, their keybinds, the arena frames' secure behaviour, and any sArena or other arena addon - BANZAI's arena enemy frames are ElvUI's arena frames in the Banzai design.
+Which spells you have, their keybinds, the arena frames' secure behaviour (targeting and focus clicks are ElvUI's), and any sArena or other arena addon - BANZAI neither needs nor manages one. An arena addon that draws its own enemy frames next to ElvUI's is reported by `/banzai arena` and left to you.

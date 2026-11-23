@@ -192,7 +192,7 @@ test('runtime paths: every bar file the built Banzai Art names exists in the bui
   expectEq(size[1] + 'x' + size[2], W.width + 'x' + W.height, 'the addon counts texels of the sheet the generator makes');
   const toc = read('BushidoPrivateCompat.toc');
   expect(/## Interface: 120105/.test(toc), 'the Retail / Midnight interface');
-  expect(/## Version: 1\.5\.1\r?$/m.test(toc), 'the release version');
+  expect(/## Version: 1\.5\.2\r?$/m.test(toc), 'the release version');
 });
 
 test('status bars only: the bar texture is given out in the bar code alone - no panel, window skin, chat, tooltip, tracker, button or PvP code names it, and nothing is written for Details or ElvUI', () => {
@@ -209,7 +209,7 @@ test('status bars only: the bar texture is given out in the bar code alone - no 
   }
   const compat = read('Compat.lua');
   expectEq((compat.match(/Theme:BarWeave\(/g) || []).length, 2, 'Banzai Art itself: a dressed unit frame\'s health and resource bar, nothing else');
-  expect(/Compat\.WEAVE_SKIP = \{ '\^ElvUF_Raid', '\^ElvUF_Arena' \}/.test(compat), 'raid and arena frames are left out');
+  expect(/Compat\.WEAVE_SKIP = \{\} /.test(compat), '1.5.2: no dressed unit frame is left out (raid and arena frames take the bar texture too)');
   const restore = path.join(ROOT, 'dist', 'BushidoPrivateRestore');
   const transform = fs.readFileSync(path.join(restore, 'Transform.lua'), 'utf8');
   expect(!/BANZAI Weave|BanzaiWeave|barTexture/.test(transform), 'the profile writer (ElvUI unit frames, nameplates, Details rows) does not know the weave');

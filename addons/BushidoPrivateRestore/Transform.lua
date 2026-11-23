@@ -1692,11 +1692,38 @@ function T.ApplyBanzaiPrivate(p, historical, fonts)
 	return T.SplitFonts(p, historical, fonts.display, fonts.small)
 end
 
+-- 1.5.2 ONE arena enemy system. BANZAI's arena enemy frames are ElvUI's (ElvUF_Arena1-5: secure unit frames
+-- ElvUI owns, styled through its own settings - T.ApplyPvP switches them on). The game's own arena frames
+-- (CompactArenaFrame) are then a second set of the same enemies; ElvUI puts them away itself when its private
+-- setting unitframe.disabledBlizzardFrames.arena is on - its default (ElvUI options > UnitFrames > General >
+-- Disabled Blizzard Frames > Arena). A BANZAI private profile is copied from the character's previous one, so a
+-- character who once switched that off (for another arena addon) brought `false` along: both sets showed.
+--   'ELVUI'  ElvUI's frames only (the setting on, or never changed: ElvUI stores only what differs from its default)
+--   'BOTH'   the setting is off: the game's frames show as well
+-- ElvUI reads the setting while it loads, so a change takes a reload. Only this one key is written, only from 'BOTH'; nothing is hidden, re-parented or unregistered by BANZAI, and no
+-- other Blizzard frame is touched. RESTORE PRE-BANZAI returns the character to its previous private profile.
+T.ARENA_PROVIDER = 'ELVUI'
+T.ARENA_PROVIDER_PATH = { 'unitframe', 'disabledBlizzardFrames', 'arena' }
+function T.ArenaProviderState(private)
+	local unitframe = type(private) == 'table' and private.unitframe
+	local disabled = type(unitframe) == 'table' and unitframe.disabledBlizzardFrames
+	if type(disabled) == 'table' and disabled.arena == false then return 'BOTH' end
+	return 'ELVUI'
+end
+
+-- true when the private profile was changed (ElvUI reads it at load: a reload is due)
+function T.ApplyArenaProvider(private)
+	if T.ArenaProviderState(private) ~= 'BOTH' then return false end
+	private.unitframe.disabledBlizzardFrames.arena = true
+	return true
+end
+
 function T.TransformPrivate(bushido, current, font, isValid, smallFont)
 	local p = T.DeepCopy(current or {})
 	T.Overlay(p, T.DeepCopy(bushido or {}))
 	p.unitframe = p.unitframe or {}
 	p.unitframe.enable = true
+	T.ApplyArenaProvider(p) -- 1.5.2: one arena enemy system (ElvUI's)
 	p.actionbar = p.actionbar or {}
 	p.actionbar.enable = true
 	p.general = p.general or {}

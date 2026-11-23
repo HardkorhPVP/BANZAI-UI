@@ -150,7 +150,7 @@ local Restore = {}
 ns.Restore = Restore
 
 local NAME = 'BANZAI'
-local VERSION = '1.5.1'
+local VERSION = '1.5.2'
 -- A "-dev" version is a private proof build, never a release; every proof build has its own version.
 local CHANNEL = string.find(VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 ns.VERSION = VERSION
@@ -1091,10 +1091,304 @@ local function UsesBanzaiProfile(key)
 	return type(keys) == 'table' and keys[key] == T.PROFILE
 end
 
+---------------------------------------------------------------------------
+-- 1.5.2 ONE arena enemy system
+---------------------------------------------------------------------------
+-- BANZAI's arena enemy frames are ElvUI's (Transform T.ApplyArenaProvider has the why). For a character on the
+-- BANZAI profiles whose private profile still lets the game's own arena frames show as well, the one ElvUI
+-- setting is switched on. ElvUI's UnitFrames module reads that setting while ElvUI itself loads - before any
+-- other addon's code runs - so the running session always keeps the old value: a reload finishes it, always.
+--   'addon loaded'  the saved setting is written at once (a table write, nothing else: no frame is touched, so it
+--                   is safe whatever the client is doing); the notice and the reload question wait for the login check
+--   later           (login check, the end of combat): written if still needed, then the chat line and the reload
+--                   question - never in combat: both wait for its end
+-- Only while ElvUI's arena frames are on in the BANZAI profile: a character who switched them off keeps the game's.
+-- Returns 'ELVUI' (nothing to do), 'CHANGED', 'DEFERRED' (combat), 'NOT RETAINED' (ElvUI's arena frames are off)
+-- or 'NOT BANZAI' (another profile: not BANZAI's business).
+function Restore:ArenaProviderNotice()
+	if not self.arenaProviderReload then return nil end
+	if InCombatLockdown() then
+		self.arenaProviderPending = true
+		return 'DEFERRED'
+	end
+	self.arenaProviderReload, self.arenaProviderPending = nil, nil
+	Print('arena enemy frames: the game\'s own arena frames were showing as a second set. ElvUI now puts them away (ElvUI > UnitFrames > Disabled Blizzard Frames > Arena); BANZAI\'s arena frames are ElvUI\'s. A reload finishes it.')
+	StaticPopup_Show('BANZAI_RELOAD')
+	return 'CHANGED'
+end
+
+function Restore:ArenaProvider(reason)
+	local E = Engine()
+	local key = E and E.mynameRealm
+	local record = key and DB().characters[key]
+	local private = _G.ElvPrivateDB
+	if not (record and record.applied and UsesBanzaiProfile(key) and type(private) == 'table' and type(private.profiles) == 'table'
+		and type(private.profileKeys) == 'table' and private.profileKeys[key] == T.PROFILE) then return 'NOT BANZAI' end
+	local shared = _G.ElvDB and _G.ElvDB.profiles and _G.ElvDB.profiles[T.PROFILE]
+	local arena = type(shared) == 'table' and type(shared.unitframe) == 'table' and type(shared.unitframe.units) == 'table' and shared.unitframe.units.arena
+	if type(arena) == 'table' and arena.enable == false then return 'NOT RETAINED' end
+	local early = reason == 'addon loaded'
+	local profile = private.profiles[T.PROFILE]
+	if T.ArenaProviderState(profile) == 'BOTH' then
+		if not early and InCombatLockdown() then
+			self.arenaProviderPending = true
+			return 'DEFERRED'
+		end
+		T.ApplyArenaProvider(profile)
+		record.arenaProvider = { retained = T.ARENA_PROVIDER, was = 'BOTH', time = date('%Y-%m-%d %H:%M:%S'), version = VERSION, reason = tostring(reason) }
+		self.arenaProviderReload = true -- ElvUI has already read the old value this session
+		if early then return 'CHANGED' end
+	end
+	if early then return T.ARENA_PROVIDER end
+	return self:ArenaProviderNotice() or T.ARENA_PROVIDER
+end
+
+local arenaProviderEvents = CreateFrame('Frame')
+arenaProviderEvents:RegisterEvent('PLAYER_REGEN_ENABLED')
+arenaProviderEvents:SetScript('OnEvent', function()
+	if Restore.arenaProviderPending then Restore:ArenaProvider('combat ended') end
+end)
+
+-- /banzai arena: every arena enemy frame system this session knows, who owns it and whether it is on screen.
+-- READ ONLY: frames are asked for plain answers (a forbidden frame is asked nothing; a secret answer is "?");
+-- nothing is shown, hidden, moved, re-parented or written. Addons are named to be reported, never to be managed.
+Restore.ARENA_ADDONS = { 'sArena', 'sArena_Reloaded', 'sArena_Updated2_by_sammers', 'Gladius', 'GladiusEx', 'Gladdy', 'ArenaCore' }
+Restore.ARENA_FOREIGN_FRAMES = { 'sArenaEnemyFrame1', 'GladiusButtonFramearena1', 'GladiusExButtonFramearena1', 'GladdyButtonFrame1' }
+Restore.ARENA_LEGACY_FRAMES = { 'ArenaEnemyMatchFramesContainer', 'ArenaEnemyFrames', 'ArenaPrepFrames' } -- the game's arena frames where there is no CompactArenaFrame
+
+local function PlainValue(value)
+	if issecretvalue and issecretvalue(value) then return nil end
+	return value
+end
+
+local function Ask(object, method, ...)
+	if type(object) ~= 'table' then return nil end
+	if object.IsForbidden and object:IsForbidden() then return nil end
+	local fn = object[method]
+	if type(fn) ~= 'function' then return nil end
+	local ok, a, b, c, d, e = pcall(fn, object, ...)
+	if not ok then return nil end
+	return PlainValue(a), PlainValue(b), PlainValue(c), PlainValue(d), PlainValue(e)
+end
+
+local function FrameName(frame)
+	if type(frame) ~= 'table' then return nil end
+	return Ask(frame, 'GetDebugName') or Ask(frame, 'GetName')
+end
+
+function Restore.FrameFacts(frame)
+	local facts = { forbidden = type(frame) == 'table' and frame.IsForbidden and frame:IsForbidden() and true or false }
+	if facts.forbidden then return facts end
+	facts.name = FrameName(frame)
+	facts.unit = Ask(frame, 'GetAttribute', 'unit')
+	if facts.unit == nil then
+		local unit = PlainValue(frame.unit)
+		if type(unit) == 'string' then facts.unit = unit end
+	end
+	facts.shown, facts.visible, facts.protected = Ask(frame, 'IsShown'), Ask(frame, 'IsVisible'), Ask(frame, 'IsProtected')
+	facts.strata, facts.level = Ask(frame, 'GetFrameStrata'), Ask(frame, 'GetFrameLevel')
+	local parent = Ask(frame, 'GetParent')
+	facts.parentFrame, facts.parent = parent, FrameName(parent)
+	local point, relative, relativePoint, x, y = Ask(frame, 'GetPoint', 1)
+	if type(point) == 'string' then
+		facts.anchor = format('%s > %s %s %s,%s', point, tostring(FrameName(relative) or '?'), tostring(relativePoint or '?'),
+			type(x) == 'number' and format('%.0f', x) or '?', type(y) == 'number' and format('%.0f', y) or '?')
+	end
+	return facts
+end
+
+function Restore:ArenaSystems()
+	local E = Engine()
+	local art = _G.BanzaiCompat
+	local out = { retained = T.ARENA_PROVIDER, systems = {}, active = {} }
+	local private = E and E.private and E.private.unitframe
+	local disabled = type(private) == 'table' and private.disabledBlizzardFrames
+	if type(disabled) == 'table' then out.setting = disabled.arena end -- ElvUI's "Disabled Blizzard Frames > Arena" as this session runs it (nil: could not be read)
+	local okInstance, _, instanceKind = pcall(IsInInstance)
+	out.inArena = okInstance and PlainValue(instanceKind) == 'arena' or false
+
+	-- ElvUI's arena unit frames (oUF: secure unit buttons ElvUI creates and drives)
+	local units = E and E.db and E.db.unitframe and E.db.unitframe.units
+	local elv = { id = 'ELVUI', owner = 'ElvUI (UnitFrames module, oUF)', frames = {},
+		enabled = type(private) == 'table' and private.enable ~= false and type(units) == 'table' and type(units.arena) == 'table' and units.arena.enable ~= false,
+		mover = E and E.db and type(E.db.movers) == 'table' and E.db.movers.ArenaHeaderMover or nil }
+	for i = 1, 5 do
+		local name = 'ElvUF_Arena' .. i
+		local frame = _G[name]
+		if type(frame) == 'table' then
+			local facts = Restore.FrameFacts(frame)
+			facts.name = facts.name or name
+			facts.banzai = art and art.PvPFrames and art.PvPFrames.Get and art.PvPFrames:Get(name) ~= nil or false
+			facts.bar = (not facts.forbidden and art and art.Theme and art.Theme.BarWeaveState) and art.Theme:BarWeaveState(frame.Health) or '?'
+			elv.frames[#elv.frames + 1] = facts
+		end
+	end
+	elv.active = elv.enabled and #elv.frames > 0
+	out.systems[#out.systems + 1] = elv
+
+	-- the game's own arena frames (Blizzard_ArenaUI): put away by ElvUI when its setting is on
+	local compact = _G.CompactArenaFrame
+	local hidden = E and E.HiddenFrame
+	local blizzard = { id = 'BLIZZARD', owner = 'Blizzard (Blizzard_ArenaUI: CompactArenaFrame)', frames = {}, loaded = type(compact) == 'table' }
+	if blizzard.loaded then
+		local facts = Restore.FrameFacts(compact)
+		facts.name = facts.name or 'CompactArenaFrame'
+		blizzard.frames[1] = facts
+		blizzard.putAway = hidden ~= nil and facts.parentFrame == hidden
+		local members = not facts.forbidden and PlainValue(compact.memberUnitFrames)
+		if type(members) == 'table' then
+			for index, frame in ipairs(members) do
+				if index > 5 then break end
+				local member = Restore.FrameFacts(frame)
+				member.name = member.name or ('CompactArenaFrameMember' .. index)
+				blizzard.frames[#blizzard.frames + 1] = member
+			end
+		end
+		blizzard.active = not blizzard.putAway
+	else
+		-- 1.5.2: a client whose game has no CompactArenaFrame (nothing is assumed about WoW Forever's arena
+		-- UI: whatever it really has is what is reported). ElvUI puts the older frames away in two ways: the match
+		-- container goes to its hidden parent; ArenaEnemyFrames is hidden, taken out of the globals and kept
+		-- under ElvUF. A frame still found in the globals and not under the hidden parent is not put away.
+		local open = 0
+		for _, name in ipairs(self.ARENA_LEGACY_FRAMES) do
+			local frame = _G[name]
+			if type(frame) == 'table' then
+				local facts = Restore.FrameFacts(frame)
+				facts.name = facts.name or name
+				blizzard.frames[#blizzard.frames + 1] = facts
+				if not (hidden ~= nil and facts.parentFrame == hidden) then open = open + 1 end
+			end
+		end
+		local kept = type(_G.ElvUF) == 'table' and PlainValue(_G.ElvUF.ArenaEnemyFrames)
+		if #blizzard.frames > 0 then
+			blizzard.loaded, blizzard.legacy, blizzard.owner = true, true, 'Blizzard (Blizzard_ArenaUI: the older arena frames)'
+			blizzard.putAway = open == 0
+			blizzard.active = open > 0
+		elseif type(kept) == 'table' then
+			blizzard.loaded, blizzard.legacy, blizzard.owner = true, true, 'Blizzard (Blizzard_ArenaUI: the older arena frames)'
+			blizzard.putAway, blizzard.active = true, false
+		else
+			blizzard.active = out.setting == false -- not loaded yet: it will show when the game loads it, unless ElvUI's setting is on
+		end
+	end
+	out.systems[#out.systems + 1] = blizzard
+
+	-- any other arena addon: reported only (BANZAI neither needs nor manages one)
+	local third = { id = 'OTHER', owner = 'another addon', frames = {}, addons = {} }
+	local loaded = C_AddOns and C_AddOns.IsAddOnLoaded
+	for _, name in ipairs(self.ARENA_ADDONS) do
+		if loaded and loaded(name) then third.addons[#third.addons + 1] = name end
+	end
+	for _, name in ipairs(self.ARENA_FOREIGN_FRAMES) do
+		if type(_G[name]) == 'table' then
+			local facts = Restore.FrameFacts(_G[name])
+			facts.name = facts.name or name
+			third.frames[#third.frames + 1] = facts
+		end
+	end
+	third.active = #third.addons > 0 or #third.frames > 0
+	out.systems[#out.systems + 1] = third
+
+	for _, system in ipairs(out.systems) do
+		if system.active then out.active[#out.active + 1] = system.id end
+	end
+	out.duplicate = #out.active > 1
+	return out
+end
+
+-- one line for /banzai status
+function Restore:ArenaSummary()
+	local ok, state = pcall(self.ArenaSystems, self)
+	if not ok then return 'could not be read (' .. tostring(state) .. ')' end
+	if #state.active == 0 then return 'none active (ElvUI\'s arena frames are off)' end
+	if state.duplicate then return 'DUPLICATE - ' .. table.concat(state.active, ' + ') .. ' (/banzai arena)' end
+	return state.active[1] == T.ARENA_PROVIDER and 'one system: ElvUI\'s arena frames in the BANZAI design' or ('one system, not BANZAI\'s: ' .. state.active[1] .. ' (/banzai arena)')
+end
+
+local function YesNo(value)
+	if value == nil then return '?' end
+	return value and 'yes' or 'no'
+end
+
+local function FactsLine(facts)
+	if facts.forbidden then return '  (a frame the client keeps from addons: not asked)' end
+	local line = format('  %s: unit %s, %s, protected %s, parent %s, %s/%s', tostring(facts.name), tostring(facts.unit or '-'),
+		facts.shown == nil and 'shown ?' or (facts.shown and (facts.visible and 'SHOWN' or 'shown (not visible)') or 'hidden'),
+		YesNo(facts.protected), tostring(facts.parent or '?'), tostring(facts.strata or '?'), tostring(facts.level or '?'))
+	if facts.anchor then line = line .. ', ' .. facts.anchor end
+	if facts.banzai ~= nil then line = line .. format(', BANZAI %s, bar %s', facts.banzai and 'styled' or 'not styled', tostring(facts.bar)) end
+	return line
+end
+
+function Restore:ArenaReport()
+	local state = self:ArenaSystems()
+	local lines = { format('%s %s (%s) arena enemy frames - read only, nothing is changed. In an arena now: %s', NAME, VERSION, CHANNEL, YesNo(state.inArena)) }
+	for _, system in ipairs(state.systems) do
+		if system.id == 'ELVUI' then
+			lines[#lines + 1] = format('ElvUI arena frames [%s] - owner %s; enabled %s; %d of 5 frames; header %s', system.active and 'ACTIVE, RETAINED: BANZAI\'s arena frames' or 'not active',
+				system.owner, YesNo(system.enabled), #system.frames, tostring(system.mover or 'ElvUI\'s default place'))
+		elseif system.id == 'BLIZZARD' then
+			local how
+			if not system.loaded then
+				how = system.active and 'not loaded yet - WILL SHOW in an arena (ElvUI\'s setting is off)' or 'not loaded yet; ElvUI puts them away when the game loads them'
+			elseif system.putAway then
+				how = 'put away by ElvUI (its hidden parent)'
+			else
+				how = 'ACTIVE - NOT put away by ElvUI'
+			end
+			lines[#lines + 1] = format('Blizzard arena frames [%s] - owner %s; ElvUI > Disabled Blizzard Frames > Arena: %s', how, system.owner, state.setting == nil and '?' or (state.setting and 'on' or 'OFF'))
+		else
+			lines[#lines + 1] = 'Other arena addons: ' .. (system.active and (table.concat(system.addons, ', ') .. (#system.frames > 0 and (' (' .. #system.frames .. ' frame(s) found)') or '') .. ' - not BANZAI\'s, not managed by BANZAI') or 'none loaded')
+		end
+		for _, facts in ipairs(system.frames) do lines[#lines + 1] = FactsLine(facts) end
+	end
+	if state.duplicate then
+		local why = {}
+		for _, id in ipairs(state.active) do
+			if id == 'BLIZZARD' then
+				if state.systems[2].legacy and state.setting ~= false then -- 1.5.2: the older frames, found in place although ElvUI's setting is not off
+					why[#why + 1] = 'the game\'s older arena frames are still in place although ElvUI\'s setting is not off (ElvUI did not put them away this session: /reload, then /banzai arena again)'
+				else
+					why[#why + 1] = 'the game\'s own arena frames are not put away (ElvUI > UnitFrames > General > Disabled Blizzard Frames > Arena is off in this private profile)'
+				end
+			end
+			if id == 'OTHER' then why[#why + 1] = 'another arena addon is loaded and draws its own frames (switch it off in the addon list, or ElvUI\'s arena frames in ElvUI)' end
+		end
+		lines[#lines + 1] = 'RESULT: DUPLICATE arena enemy frames (' .. table.concat(state.active, ' + ') .. '). Why: ' .. table.concat(why, '; ') .. '.'
+		lines[#lines + 1] = 'BANZAI keeps ElvUI\'s arena frames (secure, styled through ElvUI\'s own settings) and switches that ElvUI setting on for a BANZAI character at login; then /reload.'
+	elseif #state.active == 0 then
+		lines[#lines + 1] = 'RESULT: no arena enemy frame system is active (ElvUI > UnitFrames > Arena is off).'
+	elseif state.active[1] == T.ARENA_PROVIDER then
+		lines[#lines + 1] = 'RESULT: ONE arena enemy system - ElvUI\'s arena frames in the BANZAI design. Recommended and retained.'
+	else
+		lines[#lines + 1] = 'RESULT: one arena enemy system, but not BANZAI\'s (' .. state.active[1] .. '). BANZAI recommends ElvUI\'s arena frames (APPLY BANZAI switches them on).'
+	end
+	return lines, state
+end
+
+-- /banzai frames: the bar texture on every kind of unit frame BANZAI dresses (Banzai Art's own records)
+function Restore:FrameReport()
+	local art = _G.BanzaiCompat
+	if not (art and art.FrameCoverage) then return { 'Banzai Art is not loaded: no unit-frame report.' } end
+	local coverage = art:FrameCoverage()
+	local lines = { format('%s %s (%s) unit-frame bars - bar texture in use: %s', NAME, VERSION, CHANNEL, tostring(coverage.texture)) }
+	for _, row in ipairs(coverage.rows) do
+		local parts = {}
+		for _, state in ipairs({ 'WEAVE', 'SMOOTH', 'WAITING', 'REFUSED', 'NONE' }) do
+			if row[state] > 0 then parts[#parts + 1] = row[state] .. ' ' .. state end
+		end
+		lines[#lines + 1] = format('  %s: %s', row.label, row.frames == 0 and 'no frame exists right now' or (row.frames .. ' frame(s) - ' .. table.concat(parts, ', ')))
+	end
+	for _, text in ipairs(coverage.excluded or {}) do lines[#lines + 1] = '  not BANZAI\'s: ' .. text end
+	return lines, coverage
+end
+
 function Restore:OnAddonLoaded()
 	local E = Engine()
 	local key = E and E.mynameRealm
 	local record = key and DB().characters[key]
+	pcall(self.ArenaProvider, self, 'addon loaded') -- 1.5.2: one arena enemy system (the saved setting; the login check asks for the reload)
 	if NeedsLayer(record) then
 		self:UpgradeSettings(record, key)
 	elseif record and record.applied and UsesBanzaiProfile(key) then
@@ -1280,6 +1574,7 @@ function Restore:Status()
 	Print(roleLabel .. ': ' .. tostring(spec and spec.layout or '-') .. ' (' .. tostring(spec and spec.name or '-') .. '), frame layout in use: ' .. tostring(roles and roles:Active() or '-')
 		.. ' (' .. tostring(roles and roles:ActiveContext() or '-') .. '), identity circles: ' .. (CompatSetting('identityCircles', true) and 'on' or 'off'))
 	Print('pvp: ' .. self:PvPText())
+	Print('arena enemy frames: ' .. self:ArenaSummary()) -- 1.5.2
 	local art1 = _G.BanzaiCompat
 	local session = art1 and art1.Split and art1.Split.Session and art1.Split:Session()
 	Print(format('frame style: BANZAI %s (this session: BANZAI %s), Details meter style: BANZAI %s', T.FrameStyle(CompatSetting('frameStyle', 'CLASSIC')),
@@ -1994,9 +2289,15 @@ SlashCmdList.BANZAI = function(input)
 		-- 1.5.1-dev1: /banzai bars smooth | weave (the same choice as BANZAI > APPEARANCE > BAR TEXTURE)
 		if argument ~= '' and not Restore:SetBarTexture(argument) then Print('bar texture: smooth or weave') end
 		Print('bar texture: ' .. Restore:BarTextureText())
+	elseif command == 'arena' then
+		-- 1.5.2: who owns each arena enemy frame system (read only)
+		for _, line in ipairs(Restore:ArenaReport()) do Print(line) end
+	elseif command == 'frames' then
+		-- 1.5.2: the bar texture on every kind of unit frame BANZAI dresses (read only)
+		for _, line in ipairs(Restore:FrameReport()) do Print(line) end
 	elseif command == 'status' then
 		Restore:Status()
-		Print('commands: /banzai (options) | status | forever | apply | restore | theme vibrant|class | bars smooth|weave | role auto|dps|healer | editmode')
+		Print('commands: /banzai (options) | status | forever | arena | frames | apply | restore | theme vibrant|class | bars smooth|weave | role auto|dps|healer | editmode')
 	elseif command == 'forever' or command == 'preflight' or command == 'client' then
 		-- 1.5.0-dev1: the client, the prerequisites as Banzai really uses them, and what the client adapter did
 		for _, line in ipairs(Restore:ClientReport()) do Print(line) end
@@ -2027,8 +2328,8 @@ function Restore:OnLogin()
 		record.applied.version = VERSION
 		record.applied.upgraded = date('%Y-%m-%d %H:%M:%S')
 		if CHANNEL == 'release' then
-			-- 1.5.1: the new default bar texture is named once, with where to change it
-			Print(format('updated to %s %s (%s): BANZAI Weave is the new default bar texture; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail'))
+			-- 1.5.2: what is new is named once, with where to change the bar texture
+			Print(format('updated to %s %s (%s): BANZAI Weave now covers party, raid, boss and arena enemy frames, and arena enemies show as one frame system; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail'))
 		else
 			Print(format('updated to %s %s (%s, %s). /banzai forever shows the client report.', NAME, VERSION, CHANNEL, Flavor and Flavor.ClientText() or 'Retail')) -- 1.5.0-dev1
 		end
@@ -2042,6 +2343,8 @@ function Restore:OnLogin()
 	local style = T.DetailsStyle(CompatSetting('detailsStyle', 'CURRENT'))
 	if record and record.applied and (style ~= T.DetailsStyle(DB().detailsStyleApplied) or (style == 'COMPACT' and (self:CompactNameFace() or false) ~= DB().detailsFaceApplied)) then self:ApplyDetailsStyle() end -- 1.3.1: or the COMPACT names' font
 	self:TrackerOwnership('login')
+	-- 1.5.2: one arena enemy system - the login check: the notice and the reload question for what was switched while loading
+	pcall(self.ArenaProvider, self, 'login')
 	-- 1.5.0-dev3: the shared profile shows this character's ELVUI PANELS choice (written only when it differs)
 	if record and record.applied and UsesBanzaiProfile(key) then pcall(self.ApplyElvUIPanels, self) end
 	return result

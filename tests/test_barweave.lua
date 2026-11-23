@@ -436,7 +436,7 @@ test('1.5.1 absorb / shield / heal-prediction overlays and texts: they are frame
 	expectEq(State(), before, 'and after BANZAI Smooth again')
 end)
 
-test('1.5.1 owned surfaces: the split bars\' surfaces, the bamboo cast bar, the cooldown bars, the samples and the dressed Player / party / boss bars take the bar texture; raid and arena frames never; the cast bar\'s levels are 1.5.0\'s', function()
+test('1.5.1 owned surfaces: the split bars\' surfaces, the bamboo cast bar, the cooldown bars, the samples and the dressed Player / party / boss bars take the bar texture (1.5.2: raid and arena enemy frames too); the cast bar\'s levels are 1.5.0\'s', function()
 	ChooseBars('WEAVE')
 	-- BANZAI SPLIT surface (an ElvUI bar BANZAI paints): its dark track is the empty surface
 	local elv = WeaveBar(10)
@@ -472,7 +472,7 @@ test('1.5.1 owned surfaces: the split bars\' surfaces, the bamboo cast bar, the 
 	local u = ns.Preview:Get('player').units[1]
 	expect(u.Health and u.Health.weave and u.Health.weave.sheet.shown, 'the Player sample\'s health bar')
 	ns.Preview:HideAll()
-	-- dressed unit frames (BANZAI CLASSIC): Player, party, boss - never raid, never arena
+	-- dressed unit frames (BANZAI CLASSIC): Player, party, boss; 1.5.2: raid and the arena enemy frames too
 	player.Health.w, player.Health.h, player.Power.w, player.Power.h = 300, 22, 302, 7
 	expectEq(BanzaiCompat.WeaveUnitBars(player), true, 'Player')
 	Theme:RefreshBarWeave()
@@ -483,12 +483,13 @@ test('1.5.1 owned surfaces: the split bars\' surfaces, the bamboo cast bar, the 
 	expectEq(hp.sheet.parent, player.Health, 'on ElvUI\'s own bar')
 	expectEq(BanzaiCompat.WeaveUnitBars(party2), true, 'party')
 	expectEq(BanzaiCompat.WeaveUnitBars(boss1), true, 'boss')
-	expectEq(BanzaiCompat.WeaveUnitBars(arena1), false, 'arena frames: nothing more is made on a PvP frame')
-	expectEq(Theme:BarWeaveOf(arena1.Health), nil, 'nothing on the arena bar')
+	expectEq(BanzaiCompat.WeaveUnitBars(arena1), true, '1.5.2: the arena enemy frames')
+	expect(Theme:BarWeaveOf(arena1.Health), 'the arena health bar is given the bar texture')
 	local raid = HK_NewFrame('Button', 'ElvUF_Raid1Group1UnitButton1', UIParent)
 	raid.Health = HK_NewFrame('StatusBar', nil, raid)
-	expectEq(BanzaiCompat.WeaveUnitBars(raid), false, 'raid frames stay as they are')
-	expectEq(Theme:BarWeaveOf(raid.Health), nil, 'nothing on the raid bar')
+	expectEq(BanzaiCompat.WeaveUnitBars(raid), true, '1.5.2: the raid frames')
+	expect(Theme:BarWeaveOf(raid.Health), 'the raid health bar is given the bar texture')
+	expectEq(#BanzaiCompat.WEAVE_SKIP, 0, 'no dressed unit frame is left out')
 	expectEq(BanzaiCompat.WeaveUnitBars(HK_NewFrame('Frame', nil, UIParent)), false, 'a frame without a name: nothing')
 	-- BANZAI Smooth: every one of them plain again
 	ChooseBars('SMOOTH')
@@ -602,6 +603,261 @@ test('1.5.1 a bar the client does not let BANZAI build on (a restricted frame): 
 	Theme:RefreshBarWeave()
 	expect(waiting.sheet and waiting.sheet.shown, 'made at the next refresh')
 	ChooseBars('SMOOTH')
+end)
+
+---------------------------------------------------------------------------
+-- 1.5.2 Party / Raid / Boss / Arena enemy frames
+---------------------------------------------------------------------------
+-- an ElvUI group unit frame as the header / ElvUI makes it: the secure button, its health and power bars and one of
+-- ElvUI's own prediction bars as a child frame of the health bar (heal prediction / absorbs are frames on the bar)
+local function GroupFrame(name, unit, w, h)
+	local f = HK_NewFrame('Button', name, UIParent)
+	f.unit = unit
+	f.attributes = { unit = unit }
+	f.w, f.h = w, h
+	f.Health = HK_NewFrame('StatusBar', nil, f)
+	f.Health.level, f.Health.w, f.Health.h = 10, w, h
+	f.Health:SetStatusBarTexture(SMOOTH_FILE)
+	f.Health.absorb = HK_NewFrame('StatusBar', nil, f.Health)
+	f.Health.absorb.level, f.Health.absorb.shown = 12, true
+	f.Power = HK_NewFrame('StatusBar', nil, f)
+	f.Power.level, f.Power.w, f.Power.h = 8, w, 4
+	f.Power:SetStatusBarTexture(SMOOTH_FILE)
+	return f
+end
+local function Snapshot(f)
+	return table.concat({ tostring(f.w), tostring(f.h), tostring(#f.points), tostring(f.allPoints), tostring(f.parent == UIParent), tostring(f.attributes.unit), tostring(f.strata), tostring(f.level),
+		tostring(next(f.scripts or {}) == nil), tostring(f.shown) }, '|')
+end
+local KINDS -- { label, frame } of one frame of each kind, built by the first 1.5.2 test
+
+test('1.5.2 Party, Raid, Boss and Arena enemy frames take BANZAI Weave through the ordinary build: the filled part keeps the bar\'s own colour under the slashes, the empty part is the dark neutral textured surface, the same sheet runs across both, and the secure frame itself is left exactly as it was', function()
+	ChooseBars('WEAVE')
+	KINDS = {
+		{ 'Party', GroupFrame('ElvUF_PartyGroup1UnitButton4', 'party3', 100, 27) },
+		{ 'Raid', GroupFrame('ElvUF_Raid1Group2UnitButton3', 'raid8', 150, 20) },
+		{ 'Raid (40)', GroupFrame('ElvUF_Raid3Group8UnitButton5', 'raid40', 80, 20) },
+		{ 'Boss', GroupFrame('ElvUF_Boss2', 'boss2', 200, 35) },
+		{ 'Arena', GroupFrame('ElvUF_Arena2', 'arena2', 100, 27) },
+	}
+	local before, regions = {}, {}
+	for i, kind in ipairs(KINDS) do before[i], regions[i] = Snapshot(kind[2]), Regions(kind[2].Health) end
+	HK_IN_COMBAT = false
+	HK_Fire('GROUP_ROSTER_UPDATE')
+	HK_RunTimers()
+	expectEq(ns.Compat.lastError, nil, 'no error while building')
+	local px = Theme.PixelScale(KINDS[1][2].Health)
+	for i, kind in ipairs(KINDS) do
+		local label, f = kind[1], kind[2]
+		local entry = Theme:BarWeaveOf(f.Health)
+		expect(entry and entry.sheet and entry.base, label .. ': the health bar has the material')
+		expectEq(Theme:BarWeaveState(f.Health), 'WEAVE', label .. ': BANZAI Weave')
+		-- the active part: the bar's own fill (ElvUI colours it: class / reaction), the slash sheet over it
+		expectEq(entry.sheet.shown, true, label .. ': the slashes show')
+		expectEq(entry.sheet.path, STRANDS, label .. ': the approved strand sheet')
+		expectEq(entry.sheet.layer .. '|' .. tostring(entry.sheet.sublevel), 'OVERLAY|-8', label .. ': over the fill')
+		expectEq(entry.sheet.allPoints, f.Health, label .. ': across the WHOLE bar - the same slashes on the filled and the empty part')
+		expectEq(entry.sheet.wrapH .. '|' .. entry.sheet.wrapV, 'REPEAT|REPEAT', label .. ': repeated, never stretched')
+		expectNear(entry.sheet.coords[2] * 256, f.Health.w * px, label .. ': one texel per screen pixel across (the Player bar\'s rule)')
+		expectNear(entry.sheet.coords[4] * 64, f.Health.h * px, label .. ': and down')
+		expectEq(f.Health.statusTexture, SMOOTH_FILE, label .. ': the fill itself is ElvUI\'s, untouched (its colour is the bar\'s own)')
+		-- the depleted part: dark, neutral, not flat black, under the fill
+		expectEq(entry.base.shown, true, label .. ': the empty surface shows')
+		expectEq(entry.base.layer .. '|' .. tostring(entry.base.sublevel), 'BORDER|7', label .. ': under the fill')
+		local g = entry.base.gradient
+		expect(g, label .. ': the empty surface is a gradient, not a flat fill')
+		expectNear(g[3].r, Theme.WEAVE.empty.top[1], label .. ': the approved dark neutral (top)')
+		expectNear(g[2].r, Theme.WEAVE.empty.bottom[1], label .. ': the approved dark neutral (bottom)')
+		expect(g[3].r > 0.05 and g[3].r < 0.3, label .. ': dark, but not black')
+		expect(math.abs(g[3].r - g[3].g) < 0.05 and math.abs(g[3].g - g[3].b) < 0.05, label .. ': neutral - never a class colour')
+		-- the resource bar too, when the frame has one
+		expectEq(Theme:BarWeaveState(f.Power), 'WEAVE', label .. ': the resource bar')
+		-- overlays: ElvUI's prediction / absorb bar is a frame on the bar - above both regions, not touched
+		expectEq(entry.sheet.parent, f.Health, label .. ': a region of the bar itself (every frame on the bar draws above it)')
+		expectEq(entry.base.parent, f.Health, label .. ': so is the empty surface')
+		local absorb = f.Health.absorb
+		expectEq(tostring(absorb.shown) .. '|' .. tostring(absorb.level) .. '|' .. #absorb.points .. '|' .. tostring(absorb.parent == f.Health), 'true|12|0|true', label .. ': the absorb / prediction bar is as ElvUI made it')
+		expectEq(#(absorb.textures or {}), 0, label .. ': nothing is drawn on it')
+		expectEq(Regions(f.Health), regions[i] + 2, label .. ': BANZAI\'s two regions on the health bar, nothing else')
+		-- the secure frame itself: no size, anchor, parent, unit attribute, strata, level, script or shown state changed
+		expectEq(Snapshot(f), before[i], label .. ': the unit frame is exactly as it was')
+	end
+end)
+
+test('1.5.2 the global BAR TEXTURE stays the one switch: BANZAI Smooth puts Party, Raid, Boss and Arena bars back exactly as ElvUI draws them, BANZAI Weave brings the material back, and a reload-like refresh keeps the choice', function()
+	ChooseBars('SMOOTH')
+	for _, kind in ipairs(KINDS) do
+		local entry = Theme:BarWeaveOf(kind[2].Health)
+		expectEq(entry.sheet.shown or entry.base.shown, false, kind[1] .. ': BANZAI Smooth - no sheet, no empty surface')
+		expectEq(Theme:BarWeaveState(kind[2].Health), 'SMOOTH', kind[1] .. ': reported as Smooth')
+		expectEq(Theme:BarWeaveState(kind[2].Power), 'SMOOTH', kind[1] .. ': the resource bar too')
+	end
+	expectEq(Theme:RefreshBarWeave(), 0, 'no bar shows the weave')
+	expectEq(Theme:DB().barTexture, 'SMOOTH', 'the choice is in the saved settings')
+	ChooseBars('WEAVE')
+	BanzaiCompat:Refresh() -- what a reload ends with
+	for _, kind in ipairs(KINDS) do
+		expectEq(Theme:BarWeaveState(kind[2].Health), 'WEAVE', kind[1] .. ': BANZAI Weave again')
+	end
+	expectEq(Theme:DB().barTexture, 'WEAVE', 'kept')
+	expectEq(Theme.BAR_TEXTURE_DEFAULT, 'WEAVE', 'BANZAI Weave is still the BANZAI default')
+	-- no per-frame-kind texture setting was added
+	for key in pairs(Theme.DEFAULTS) do
+		expect(not (string.find(key, 'Texture', 1, true) and key ~= 'barTexture'), 'one bar texture setting only (found ' .. key .. ')')
+	end
+end)
+
+test('1.5.2 combat: nothing is built on a group or arena frame in combat - the frame waits and gets the material when combat ends; a build asked for in combat is deferred as a whole', function()
+	ChooseBars('WEAVE')
+	local f = GroupFrame('ElvUF_Arena3', 'arena3', 100, 27)
+	local raid = GroupFrame('ElvUF_Raid1Group3UnitButton1', 'raid11', 150, 20)
+	local onBar, onFrame, onRaid = Regions(f.Health) + #HK_Children(f.Health), #HK_Children(f), #HK_Children(raid)
+	-- two frames no build will find again (dressed earlier, as a frame that waited for combat to end is): only the waiting list can hand them over
+	local waitedA, waitedB = GroupFrame('ElvUF_Raid2Group1UnitButton1', 'raid21', 150, 20), GroupFrame('ElvUF_Raid2Group1UnitButton2', 'raid22', 150, 20)
+	_G.ElvUF_Raid2Group1UnitButton1, _G.ElvUF_Raid2Group1UnitButton2 = nil, nil
+	HK_IN_COMBAT = true
+	expectEq(BanzaiCompat.WeaveUnitBars(waitedA), false, 'a dressed frame asked in combat waits')
+	local function ArenaWaiting()
+		for _, r in ipairs(BanzaiCompat:FrameCoverage().rows) do if r.label == 'Arena enemies' then return r.WAITING end end
+	end
+	local waitingBefore = ArenaWaiting()
+	expectEq(BanzaiCompat.WeaveUnitBars(f), false, 'in combat: not handed over')
+	expectEq(ArenaWaiting(), waitingBefore + 1, 'the diagnostic counts exactly this frame as waiting (nothing is built on it, so only the waiting list knows)')
+	expectEq(Theme:BarWeaveOf(f.Health), nil, 'the bar texture knows nothing of the bar yet')
+	expectEq(Regions(f.Health) + #HK_Children(f.Health), onBar, 'nothing was made on the health bar')
+	expectEq(#HK_Children(f), onFrame, 'nothing was made on the arena frame')
+	-- a roster change in combat: the whole build waits (no frame is dressed)
+	HK_Fire('ARENA_OPPONENT_UPDATE')
+	HK_Fire('GROUP_ROSTER_UPDATE')
+	HK_RunTimers()
+	expectEq(Theme:BarWeaveOf(raid.Health), nil, 'a raid frame that appeared in combat: nothing yet')
+	expectEq(#HK_Children(raid), onRaid, 'and nothing on the frame')
+	local row
+	for _, r in ipairs(BanzaiCompat:FrameCoverage().rows) do if r.label == 'Arena enemies' then row = r end end
+	expect(row and row.WAITING >= 1, 'the diagnostic says it is waiting')
+	expectEq(BanzaiCompat.WeavePending(), 2, 'asked again in combat: both still wait, still nothing built')
+	expectEq(Theme:BarWeaveOf(f.Health), nil, 'nothing')
+	-- combat ends
+	HK_IN_COMBAT = false
+	HK_Fire('PLAYER_REGEN_ENABLED')
+	HK_RunTimers()
+	expectEq(Theme:BarWeaveState(f.Health), 'WEAVE', 'after combat: the arena frame has the material')
+	expectEq(Theme:BarWeaveState(raid.Health), 'WEAVE', 'and the raid frame that appeared in combat')
+	expectEq(Theme:BarWeaveState(waitedA.Health), 'WEAVE', 'the deferred build hands over the frames that waited')
+	expectEq(BanzaiCompat.WeavePending(), 0, 'nothing waits any more')
+	expectEq(f.attributes.unit, 'arena3', 'the unit attribute was never written')
+	-- a second combat without any roster change (no build is pending): the end of combat alone hands the frame over
+	HK_IN_COMBAT = true
+	expectEq(BanzaiCompat.WeaveUnitBars(waitedB), false, 'waits')
+	expectEq(Theme:BarWeaveOf(waitedB.Health), nil, 'nothing in combat')
+	HK_IN_COMBAT = false
+	HK_Fire('PLAYER_REGEN_ENABLED')
+	expectEq(Theme:BarWeaveState(waitedB.Health), 'WEAVE', 'handed over when combat ends')
+end)
+
+test('1.5.2 a frame or bar the client has made forbidden is asked nothing: no call reaches it, nothing is built, and it is tried again later - never forced', function()
+	ChooseBars('WEAVE')
+	local f = GroupFrame('ElvUF_Arena4', 'arena4', 100, 27)
+	HK_FORBIDDEN_CALLS = {}
+	local health = f.Health
+	HK_Forbid(health)
+	expectEq(BanzaiCompat.WeaveUnitBars(f), false, 'a forbidden health bar: not handed over')
+	expectEq(#HK_FORBIDDEN_CALLS, 0, 'no method of the forbidden bar was called')
+	expectEq(Theme:BarWeaveOf(health), nil, 'nothing recorded for it')
+	expectEq(BanzaiCompat.WeavePending() >= 1, true, 'it waits')
+	expectEq(#HK_FORBIDDEN_CALLS, 0, 'asking again calls nothing on it either')
+	local whole = GroupFrame('ElvUF_Arena5', 'arena5', 100, 27)
+	HK_Forbid(whole)
+	expectEq(BanzaiCompat.WeaveUnitBars(whole), false, 'a forbidden frame: nothing, not even its name is asked')
+	expectEq(#HK_FORBIDDEN_CALLS, 0, 'no call')
+	local rows = BanzaiCompat:FrameCoverage().rows
+	expectEq(#HK_FORBIDDEN_CALLS, 0, 'the diagnostic asks a forbidden frame nothing')
+	expect(#rows >= 9, 'and still reports')
+	_G.ElvUF_Arena4, _G.ElvUF_Arena5 = nil, nil -- (the two forbidden samples leave the stage: the other modules' own tests cover forbidden arena frames)
+	-- a bar the client refused while building (an error inside the build): asked again after the next loading screen
+	local late = GroupFrame('ElvUF_Boss3', 'boss3', 200, 35)
+	local real = late.Health.GetStatusBarTexture
+	local calls = 0
+	late.Health.GetStatusBarTexture = function() calls = calls + 1 error('blocked by a secret aspect') end
+	expectEq(BanzaiCompat.WeaveUnitBars(late), true, 'handed over')
+	expectEq(Theme:BarWeaveState(late.Health), 'REFUSED', 'the client refused: reported, no error raised')
+	Theme:RefreshBarWeave()
+	expectEq(calls, 1, 'not asked again on a refresh')
+	late.Health.GetStatusBarTexture = real
+	HK_Fire('PLAYER_ENTERING_WORLD', false, false) -- a loading screen
+	HK_RunTimers()
+	expectEq(Theme:BarWeaveState(late.Health), 'WEAVE', 'after the loading screen it is asked once more, and has the material')
+end)
+
+test('1.5.2 /banzai frames: the coverage of every kind of unit frame BANZAI dresses, the frames it does not, and no setting or frame changed by asking', function()
+	ChooseBars('WEAVE')
+	Theme:RefreshBarWeave()
+	local c = BanzaiCompat:FrameCoverage()
+	expectEq(c.texture, 'BANZAI Weave', 'the texture in use')
+	local labels, by = {}, {}
+	for _, row in ipairs(c.rows) do labels[#labels + 1] = row.label by[row.label] = row end
+	expectEq(table.concat(labels, ','), 'Player,Target,Focus,Target of Target,Pet,Party,Raid,Boss,Arena enemies', 'every kind, in order')
+	for _, label in ipairs({ 'Player', 'Party', 'Raid', 'Boss', 'Arena enemies' }) do
+		expect(by[label].frames >= 1 and by[label].WEAVE >= 1, label .. ': frames with BANZAI Weave')
+		expectEq(by[label].frames, by[label].WEAVE + by[label].SMOOTH + by[label].WAITING + by[label].REFUSED + by[label].NONE, label .. ': every frame counted once')
+	end
+	expectEq(#BanzaiCompat.CoverageNames(BanzaiCompat.COVERAGE[7]), 3 * 8 * 5, 'raid: every ElvUI raid header, group and button')
+	expect(#c.excluded >= 3, 'the frames BANZAI does not dress are named')
+	ChooseBars('SMOOTH')
+	local s = BanzaiCompat:FrameCoverage()
+	expectEq(s.texture, 'BANZAI Smooth', 'BANZAI Smooth is reported')
+	for _, row in ipairs(s.rows) do expectEq(row.WEAVE, 0, row.label .. ': no weave under BANZAI Smooth') end
+	ChooseBars('WEAVE')
+end)
+
+test('1.5.2 arena enemy chassis: a thin lime-to-purple BANZAI outline around each enemy health bar - Banzai\'s own frame on the PvP layer (never a child of the arena frame), built once out of combat, shown only while the frame plainly shows; allies get none', function()
+	local PV = ns.PvPFrames
+	arena1.shown, arena1.Health.shown = true, true
+	arena1.Health.w, arena1.Health.h = 100, 27
+	HK_IN_COMBAT = false
+	PV:Refresh()
+	local ae, pe = PV:Get('ElvUF_Arena1'), PV:Get('ElvUF_PartyGroup1UnitButton2')
+	expect(ae and ae.chassis, 'the arena enemy entry has a chassis')
+	expectEq(pe and pe.chassis, nil, 'party / arena allies: none')
+	local m = ae.chassis
+	expectEq(m.parent, ae.root, 'on the entry\'s root (the Banzai PvP layer)')
+	for _, d in ipairs(HK_Descendants(arena1)) do expect(d ~= m and d.parent ~= m, 'nothing of the chassis is inside the arena frame') end
+	expectEq(#m.edges, 4, 'four edges')
+	expectEq(#m.points, 2, 'two corners')
+	for _, point in ipairs(m.points) do expectEq(point[2], arena1.Health, 'both on the same health bar (it can never reach across the screen)') end
+	expectEq(m.points[1][4] .. '|' .. m.points[1][5] .. '|' .. m.points[2][4] .. '|' .. m.points[2][5], '-1|1|1|-1', 'one unit outside the bar')
+	expectEq(m.mouse, false, 'clicks pass through to the secure frame')
+	local top, bottom, left, right = m.edges[1], m.edges[2], m.edges[3], m.edges[4]
+	expectEq(top.h .. '|' .. bottom.h .. '|' .. left.w .. '|' .. right.w, '1|1|1|1', 'screen-thin lines')
+	expect(top.gradient and bottom.gradient, 'the top and bottom edges are gradients')
+	expect(green(top.gradient[2]) and purple(top.gradient[3]), 'lime into purple')
+	expect(green({ r = left.color[1], g = left.color[2], b = left.color[3] }) and purple({ r = right.color[1], g = right.color[2], b = right.color[3] }), 'the left edge lime, the right edge purple')
+	expectEq(m.shown, true, 'shown with the visible enemy frame')
+	expect(m.level > (arena1.level or 1) and m.level < ae.target.level, 'above the frame, under the TARGET / FOCUS outlines')
+	-- the frame hides: the chassis goes
+	arena1.shown = false
+	PV:Refresh()
+	expectEq(m.shown, false, 'hidden with the frame')
+	arena1.shown = true
+	PV:Refresh()
+	expectEq(m.shown, true, 'back with it')
+	-- built once: a refresh makes no second chassis, and nothing is built in combat
+	local count = #HK_Children(ae.root)
+	PV:Refresh()
+	expectEq(#HK_Children(ae.root), count, 'a refresh builds nothing new')
+	HK_IN_COMBAT = true
+	expectEq(PV:Build(), false, 'in combat nothing is built')
+	HK_IN_COMBAT = false
+	-- Banzai Art off (another profile): put away
+	local was = HK_ElvData.current
+	HK_ElvData.current = 'Some other profile'
+	BanzaiCompat:Refresh()
+	PV:Refresh()
+	expectEq(m.shown and ae.root.shown, false, 'another profile: not shown')
+	HK_ElvData.current = was
+	BanzaiCompat:Refresh()
+	PV:Refresh()
+	expectEq(m.shown, true, 'the Banzai profile again')
 end)
 
 -- (last: a refused file is remembered for the session, as the client would refuse it again)

@@ -530,9 +530,9 @@ const MUTANTS_WEAVE = [
   ['owned-surface routing', PREVIEW, 'the samples get no bar texture', '\tbar.weave = Theme:BarWeave(bar) -- 1.5.1: the samples show the bar texture in use', '\tbar.weave = nil', 'barweave'],
   ['owned-surface routing', PLATE, 'the targeted nameplate gets no bar texture', 'weave = Theme:BarWeave(bar) } -- 1.5.1: the bar texture in use, with the treatment', 'weave = nil }', 'barweave'],
   ['owned-surface routing', PLATE, 'the weave stays on a plate that is no longer the target\'s', '\tTheme:ShowBarWeave(deco.weave, classic) -- 1.5.1\n', '', 'barweave'],
-  ['owned-surface routing', COMPAT, 'arena frames get the material (something made on a PvP frame)', "Compat.WEAVE_SKIP = { '^ElvUF_Raid', '^ElvUF_Arena' }", "Compat.WEAVE_SKIP = { '^ElvUF_Raid' }", 'barweave'],
-  ['owned-surface routing', COMPAT, 'raid frames get the material', "Compat.WEAVE_SKIP = { '^ElvUF_Raid', '^ElvUF_Arena' }", "Compat.WEAVE_SKIP = { '^ElvUF_Arena' }", 'barweave'],
-  ['owned-surface routing', COMPAT, 'a dressed frame\'s resource bar is left out', '\tTheme:BarWeave(frame.Power)\n', '', 'barweave'],
+  ['owned-surface routing', COMPAT, 'arena enemy frames are left out again (1.5.1)', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_Arena' } --", 'barweave'],
+  ['owned-surface routing', COMPAT, 'raid frames are left out again (1.5.1)', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_Raid' } --", 'barweave'],
+  ['owned-surface routing', COMPAT, 'a dressed frame\'s resource bar is left out', '\tif frame.Power and not Forbidden(frame.Power) then Theme:BarWeave(frame.Power) end\n', '', 'barweave'],
   ['owned-surface routing', COMPAT, 'a dressed frame\'s health bar is left out', '\tTheme:BarWeave(frame.Health)\n', '', 'barweave'],
   ['owned-surface routing', COMPAT, 'a frame without a name is dressed', "\tif type(name) ~= 'string' or IsSecret(name) then return false end\n\tfor _, pattern in ipairs(Compat.WEAVE_SKIP)", "\tif type(name) ~= 'string' or IsSecret(name) then name = '' end\n\tfor _, pattern in ipairs(Compat.WEAVE_SKIP)", 'barweave'],
   // overlay preservation: absorbs, shields, heal prediction and texts are frames on the bar and stay above the material
@@ -557,7 +557,98 @@ const MUTANTS_WEAVE = [
   ['asset', WEAVE_JS, 'the strand layer not the sheet\'s own darkness', 'px[i * 4 + 3] = 255 - source.px[i * 4];', 'px[i * 4 + 3] = 255 - Math.round(source.px[i * 4] * 0.9);', 'weave'],
   ['asset', WEAVE_JS, 'a sheet of another size', 'width: 256, height: 64,', 'width: 128, height: 64,', 'weave'],
 ];
-const SETS = { weave: MUTANTS_WEAVE, dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
+// 1.5.2 (unified Party / Raid / Boss / Arena unit frames): the arena provider decision and its one setting, the
+// duplicate detection, the read-only diagnostic, the bar texture's routing to every dressed group frame, BANZAI
+// Smooth, the empty surface, combat deferral, forbidden frames, the overlays and the arena chassis
+//   node tools/mutate.js 1.5.2 [word]
+const BW = 'barweave';
+const MUTANTS_152 = [
+  // arena owner selection
+  ['arena owner selection', TRANSFORM, 'the game\'s own frames named as the retained provider', "T.ARENA_PROVIDER = 'ELVUI'", "T.ARENA_PROVIDER = 'BLIZZARD'"],
+  ['arena owner selection', TRANSFORM, 'the retained provider (ElvUI\'s arena frames) switched off by the layer', "\tarena.enable = true -- 1.0.1: Banzai's arena enemy frames, always", "\tarena.enable = false"],
+  ['arena owner selection', RESTORE, 'the game\'s frames reported as BANZAI\'s when they are the only system', "\treturn state.active[1] == T.ARENA_PROVIDER and 'one system: ElvUI\\'s arena frames in the BANZAI design'", "\treturn true and 'one system: ElvUI\\'s arena frames in the BANZAI design'"],
+  // duplicate-frame detection
+  ['duplicate-frame detection', TRANSFORM, 'a profile that shows both sets is called fine', "\tif type(disabled) == 'table' and disabled.arena == false then return 'BOTH' end", "\tif type(disabled) == 'table' and disabled.arena == 'never' then return 'BOTH' end"],
+  ['duplicate-frame detection', TRANSFORM, 'a profile that never changed the setting is called a duplicate', "\tif type(disabled) == 'table' and disabled.arena == false then return 'BOTH' end", "\tif type(disabled) ~= 'table' or disabled.arena ~= true then return 'BOTH' end"],
+  ['duplicate-frame detection', RESTORE, 'two active systems are not a duplicate', "\tout.duplicate = #out.active > 1", "\tout.duplicate = false"],
+  ['duplicate-frame detection', RESTORE, 'the game\'s frames never count as active', "\t\tblizzard.active = not blizzard.putAway", "\t\tblizzard.active = false"],
+  ['duplicate-frame detection', RESTORE, 'frames ElvUI has put away still count as active', "\t\tblizzard.putAway = hidden ~= nil and facts.parentFrame == hidden", "\t\tblizzard.putAway = false"],
+  ['duplicate-frame detection', RESTORE, 'the game\'s arena UI not loaded yet is never a duplicate', "\t\tblizzard.active = out.setting == false -- not loaded yet", "\t\tblizzard.active = false -- not loaded yet"],
+  ['duplicate-frame detection', RESTORE, 'another arena addon is not seen', "\tthird.active = #third.addons > 0 or #third.frames > 0", "\tthird.active = false"],
+  ['duplicate-frame detection', RESTORE, 'ElvUI\'s arena frames count as active while switched off', "\telv.active = elv.enabled and #elv.frames > 0", "\telv.active = #elv.frames > 0"],
+  // redundant-system disable
+  ['redundant-system disable', TRANSFORM, 'the setting is written the wrong way round', "\tprivate.unitframe.disabledBlizzardFrames.arena = true\n\treturn true", "\tprivate.unitframe.disabledBlizzardFrames.arena = false\n\treturn true"],
+  ['redundant-system disable', TRANSFORM, 'other Blizzard frames are switched off with it', "\tprivate.unitframe.disabledBlizzardFrames.arena = true\n", "\tprivate.unitframe.disabledBlizzardFrames.arena = true\n\tprivate.unitframe.disabledBlizzardFrames.party = true\n"],
+  ['redundant-system disable', TRANSFORM, 'a profile that is fine is written anyway', "\tif T.ArenaProviderState(private) ~= 'BOTH' then return false end\n", "\tif type(private) ~= 'table' then return false end\n\tprivate.unitframe = private.unitframe or {}\n\tprivate.unitframe.disabledBlizzardFrames = private.unitframe.disabledBlizzardFrames or {}\n"],
+  ['redundant-system disable', TRANSFORM, 'APPLY BANZAI carries the duplicate along', "\tT.ApplyArenaProvider(p) -- 1.5.2: one arena enemy system (ElvUI's)\n", ''],
+  ['redundant-system disable', RESTORE, 'the load path does not switch it', "\tpcall(self.ArenaProvider, self, 'addon loaded') -- 1.5.2", "\t-- 1.5.2"],
+  ['redundant-system disable', RESTORE, 'the login check never asks', "\tpcall(self.ArenaProvider, self, 'login')\n", ''],
+  ['redundant-system disable', RESTORE, 'a character on another private profile is written', "private.profileKeys[key] == T.PROFILE) then return 'NOT BANZAI' end", "true) then return 'NOT BANZAI' end"],
+  ['redundant-system disable', RESTORE, 'a character on another ElvUI profile is written', "\tif not (record and record.applied and UsesBanzaiProfile(key) and type(private) == 'table'", "\tif not (record and record.applied and type(private) == 'table'"],
+  ['redundant-system disable', RESTORE, 'a character BANZAI was never applied to is written', "\tif not (record and record.applied and UsesBanzaiProfile(key) and type(private) == 'table'", "\tif not (record and UsesBanzaiProfile(key) and type(private) == 'table'"],
+  ['redundant-system disable', RESTORE, 'a late switch asks for no reload', "\tStaticPopup_Show('BANZAI_RELOAD')\n\treturn 'CHANGED'", "\treturn 'CHANGED'"],
+  ['redundant-system disable', RESTORE, 'the question is asked while the addons load', "\t\tif early then return 'CHANGED' end\n\tend\n\tif early then return T.ARENA_PROVIDER end\n", "\tend\n"],
+  ['redundant-system disable', RESTORE, 'a switch made while loading asks for no reload (ElvUI keeps the old value)', "\t\tself.arenaProviderReload = true -- ElvUI has already read the old value this session\n", ''],
+  ['redundant-system disable', RESTORE, 'the reload is asked for at every login check', "\tif not self.arenaProviderReload then return nil end\n", ''],
+  ['arena owner selection', RESTORE, 'the game\'s frames are put away although ElvUI\'s arena frames are off (no enemy frames at all)', "\tif type(arena) == 'table' and arena.enable == false then return 'NOT RETAINED' end\n", ''],
+  ['read-only diagnostic', RESTORE, 'a setting that cannot be read is called OFF', "\tif type(disabled) == 'table' then out.setting = disabled.arena end", "\tout.setting = type(disabled) == 'table' and disabled.arena"],
+  ['redundant-system disable', RESTORE, 'the decision is not recorded', "\t\trecord.arenaProvider = { retained = T.ARENA_PROVIDER, was = 'BOTH'", "\t\tlocal _ = { retained = T.ARENA_PROVIDER, was = 'BOTH'"],
+  // secure combat deferral
+  ['secure combat deferral', RESTORE, 'the setting is written and a popup shown in combat', "\t\tif not early and InCombatLockdown() then\n\t\t\tself.arenaProviderPending = true\n\t\t\treturn 'DEFERRED'\n\t\tend\n", ''],
+  ['secure combat deferral', RESTORE, 'the reload question is shown in combat', "\tif InCombatLockdown() then\n\t\tself.arenaProviderPending = true\n\t\treturn 'DEFERRED'\n\tend\n\tself.arenaProviderReload, self.arenaProviderPending = nil, nil", "\tself.arenaProviderReload, self.arenaProviderPending = nil, nil"],
+  ['secure combat deferral', RESTORE, 'a deferred switch is forgotten when combat ends', "\tif Restore.arenaProviderPending then Restore:ArenaProvider('combat ended') end", "\tif false then Restore:ArenaProvider('combat ended') end"],
+  ['secure combat deferral', RESTORE, 'the end of every combat switches again', "\tif Restore.arenaProviderPending then Restore:ArenaProvider('combat ended') end", "\tRestore:ArenaProvider('addon loaded')"],
+  ['secure combat deferral', COMPAT, 'the material is built on a group / arena frame in combat', "\tif InCombatLockdown() or (frame.Health and Forbidden(frame.Health)) then", "\tif (frame.Health and Forbidden(frame.Health)) then", BW],
+  ['secure combat deferral', COMPAT, 'a frame that waited is forgotten by the deferred build', "\tCompat.WeavePending() -- 1.5.2: unit frames whose bar texture waited (combat, a forbidden moment)\n", '', BW],
+  ['secure combat deferral', COMPAT, 'a frame that waited is forgotten when combat ends', "if pending then Compat:Build() else Compat.WeavePending() end", "if pending then Compat:Build() end", BW],
+  ['secure combat deferral', COMPAT, 'a frame asked in combat is not remembered', "\t\tweaveWaiting[frame] = true\n\t\treturn false", "\t\treturn false", BW],
+  ['secure combat deferral', COMPAT, 'a forbidden health bar is built on', "\tif InCombatLockdown() or (frame.Health and Forbidden(frame.Health)) then", "\tif InCombatLockdown() then", BW],
+  ['secure combat deferral', COMPAT, 'a forbidden frame is asked for its name', "\tif Forbidden(frame) then return false end -- (asked first: a forbidden frame answers nothing else, not even its name)\n", "\tif not frame then return false end\n", BW],
+  ['secure combat deferral', PVP, 'the arena chassis is made inside the arena frame', "\t\t\t\t\t\tentry.chassis = PvP.Chassis(root, health) -- 1.5.2", "\t\t\t\t\t\tentry.chassis = PvP.Chassis(frame, health) -- 1.5.2", BW],
+  ['secure combat deferral', PVP, 'the arena chassis catches the mouse over the secure frame', "\tm:SetPoint('BOTTOMRIGHT', region, 'BOTTOMRIGHT', K.inset, -K.inset)\n\tm:EnableMouse(false)", "\tm:SetPoint('BOTTOMRIGHT', region, 'BOTTOMRIGHT', K.inset, -K.inset)\n\tm:EnableMouse(true)", BW],
+  // the diagnostic stays read only
+  ['read-only diagnostic', RESTORE, '/banzai arena switches the setting itself', "function Restore:ArenaReport()\n\tlocal state = self:ArenaSystems()", "function Restore:ArenaReport()\n\tself:ArenaProvider('report')\n\tlocal state = self:ArenaSystems()"],
+  ['read-only diagnostic', RESTORE, 'a forbidden frame is asked', "\tif facts.forbidden then return facts end\n", ''],
+  ['read-only diagnostic', RESTORE, 'the frames\' unit assignments are not reported', "\tfacts.unit = Ask(frame, 'GetAttribute', 'unit')", "\tfacts.unit = nil"],
+  ['read-only diagnostic', RESTORE, 'the duplicate\'s cause is not stated', "\t\t\tif id == 'BLIZZARD' then\n", "\t\t\tif id == 'NEVER' then\n"],
+  // 1.5.2-dev2: a client without CompactArenaFrame (the diagnostic's adapter)
+  ['older arena frames', RESTORE, 'the older frames in place never count as active', "\t\t\tblizzard.active = open > 0\n", "\t\t\tblizzard.active = false\n"],
+  ['older arena frames', RESTORE, 'frames ElvUI kept under ElvUF still count as active', "\t\t\tblizzard.putAway, blizzard.active = true, false\n", "\t\t\tblizzard.putAway, blizzard.active = true, true\n"],
+  ['older arena frames', RESTORE, 'a frame under ElvUI\'s hidden parent counts as in place', "\t\t\t\tif not (hidden ~= nil and facts.parentFrame == hidden) then open = open + 1 end\n", "\t\t\t\topen = open + 1\n"],
+  ['older arena frames', RESTORE, 'a setting that is on is blamed for the older frames', "\t\t\t\tif state.systems[2].legacy and state.setting ~= false then", "\t\t\t\tif false then"],
+  // Weave routing and Party / Raid / Boss / Arena coverage
+  ['coverage', COMPAT, 'arena enemy frames are left out', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_Arena' } --", BW],
+  ['coverage', COMPAT, 'raid frames are left out', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_Raid' } --", BW],
+  ['coverage', COMPAT, 'the 40-player raid frames are left out', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_Raid3' } --", BW],
+  ['coverage', COMPAT, 'party frames are left out', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_PartyGroup' } --", BW],
+  ['coverage', COMPAT, 'boss frames are left out', "Compat.WEAVE_SKIP = {} --", "Compat.WEAVE_SKIP = { '^ElvUF_Boss' } --", BW],
+  ['coverage', COMPAT, 'a group frame\'s resource bar is left out', "\tif frame.Power and not Forbidden(frame.Power) then Theme:BarWeave(frame.Power) end\n", '', BW],
+  ['coverage', COMPAT, 'the diagnostic does not see a waiting frame', "local state = (weaveWaiting[frame] and 'WAITING') or Theme:BarWeaveState(", "local state = Theme:BarWeaveState(", BW],
+  ['coverage', COMPAT, 'the diagnostic leaves the arena enemies out', "\t{ label = 'Arena enemies', prefix = 'ElvUF_Arena', count = 5 },\n", '', BW],
+  ['Weave routing', THEME, 'a bar is reported as Weave whenever it was ever built', "\tif entry.on then return 'WEAVE' end", "\tif entry.sheet then return 'WEAVE' end", BW],
+  ['Weave routing', THEME, 'what a bar shows is not recorded', "\tentry.on = on -- 1.5.2", "\t-- 1.5.2", BW],
+  // Smooth fallback
+  ['Smooth fallback', THEME, 'BANZAI Smooth still draws the slashes on every bar', "\tlocal on = def.strands ~= nil and entry.shown ~= false and not (compat and compat.Active and not compat.Active())", "\tlocal on = entry.shown ~= false and not (compat and compat.Active and not compat.Active())", BW],
+  // depleted texture behaviour
+  ['depleted texture', THEME, 'the empty part flat black', "empty = { bottom = { 0.085, 0.108, 0.098 }, top = { 0.150, 0.182, 0.168 }, alpha = 1 }", "empty = { bottom = { 0, 0, 0 }, top = { 0, 0, 0 }, alpha = 1 }", BW],
+  ['depleted texture', THEME, 'the empty part tinted (a colour, not neutral)', "empty = { bottom = { 0.085, 0.108, 0.098 }, top = { 0.150, 0.182, 0.168 }, alpha = 1 }", "empty = { bottom = { 0.085, 0.108, 0.098 }, top = { 0.150, 0.482, 0.168 }, alpha = 1 }", BW],
+  ['depleted texture', THEME, 'the empty part drawn over the fill (the health disappears)', "\t\tbase = bar:CreateTexture(nil, 'BORDER', nil, 7)", "\t\tbase = bar:CreateTexture(nil, 'ARTWORK', nil, 7)", BW],
+  ['depleted texture', THEME, 'no empty surface on a bar without a track', "\t\tif on then self:WeaveEmpty(entry.base) end\n\t\tentry.base:SetShown(on)", "\t\tentry.base:SetShown(false)", BW],
+  ['depleted texture', THEME, 'the sheet on the filled part only (the slashes stop at the health boundary)', "\tsheet:SetAllPoints(bar)\n", "\tsheet:SetAllPoints(bar:GetStatusBarTexture())\n", BW],
+  // overlay preservation
+  ['overlay preservation', THEME, 'the sheet in a frame of its own (level with the absorb / prediction bars)', "\tlocal sheet = bar:CreateTexture(nil, 'OVERLAY', nil, -8)", "\tlocal sheet = CreateFrame('Frame', nil, bar):CreateTexture(nil, 'OVERLAY', nil, -8)", BW],
+  ['overlay preservation', THEME, 'the sheet at the top of the bar\'s overlay layer', "\tlocal sheet = bar:CreateTexture(nil, 'OVERLAY', nil, -8)", "\tlocal sheet = bar:CreateTexture(nil, 'OVERLAY', nil, 7)", BW],
+  // a refusal is reconsidered, never forced
+  ['refusal', COMPAT, 'a refused bar is never asked again', "\t\t\tTheme:ReconsiderBarWeave() -- 1.5.2: a loading screen - a bar the client refused is asked once more\n", '', BW],
+  ['refusal', THEME, 'a refused bar is asked again on every refresh', "\t\tif not entry.refused then\n\t\t\tok, built = pcall(BuildWeave, entry)", "\t\tif true then\n\t\t\tok, built = pcall(BuildWeave, entry)", BW],
+  // the arena chassis
+  ['arena chassis', PVP, 'the chassis stays on screen when the arena frame hides', "\tif entry.chassis then entry.chassis:SetShown(on) end", "\tif entry.chassis then entry.chassis:SetShown(true) end", BW],
+  ['arena chassis', PVP, 'no chassis on the arena enemy frames', "\t\t\t\t\t\tentry.chassis = PvP.Chassis(root, health) -- 1.5.2\n\t\t\t\t\t\tRaise(entry.chassis, 5)", "\t\t\t\t\t\tif false then Raise(entry.chassis, 5) end", BW],
+  ['arena chassis', PVP, 'the chassis over the TARGET / FOCUS outlines', "\t\t\t\t\t\tRaise(entry.chassis, 5)", "\t\t\t\t\t\tRaise(entry.chassis, 9)", BW],
+  ['arena chassis', PVP, 'a thick chassis', "PvP.CHASSIS = { inset = 1, thickness = 1, alpha = 0.9 }", "PvP.CHASSIS = { inset = 1, thickness = 4, alpha = 0.9 }", BW],
+  ['arena chassis', PVP, 'a chassis that reaches away from the bar', "PvP.CHASSIS = { inset = 1, thickness = 1, alpha = 0.9 }", "PvP.CHASSIS = { inset = 12, thickness = 1, alpha = 0.9 }", BW],
+];
+const SETS = { '1.5.2': MUTANTS_152, weave: MUTANTS_WEAVE, dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
 
 function suiteFor(file) {
   if (file.startsWith('dist/BushidoPrivateRestore/')) return 'restore';

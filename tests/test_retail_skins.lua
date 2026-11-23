@@ -66,7 +66,7 @@ ElvUI[1].GetModule = function(self, name, silent) if name == 'Chat' then return 
 
 test('Retail: Banzai Art 1.5.0 builds with the new files and without an error', function()
 	expectEq(ns.Flavor.Id(), 'RETAIL', 'client')
-	expectEq(Theme.VERSION, '1.5.1', 'version')
+	expectEq(Theme.VERSION, '1.5.2', 'version')
 	HK_Fire('PLAYER_ENTERING_WORLD', true, false)
 	HK_RunTimers()
 	HK_RunTimers()

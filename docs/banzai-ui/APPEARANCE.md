@@ -17,9 +17,11 @@ The texture of BANZAI's own bars. It shows at once; no reload.
 - **BANZAI Weave** (default) - a slashed, brushed surface: free diagonal strokes running down to the right across the whole bar. The filled part keeps its colour; the empty part stays dark and neutral with the same strokes running through it, so a bar that is half empty is still one material. It is drawn one texel per screen pixel, so no bar stretches it and no UI scale blurs it. Absorb, shield and heal-prediction overlays and all texts stay on top of it, unchanged.
 - **BANZAI Smooth** - one continuous surface: the bars as they were before 1.5.1.
 
-Bars that take it: the Player, Target, Focus and party health and resource bars BANZAI dresses (BANZAI CLASSIC and BANZAI SPLIT), boss bars, the targeted enemy nameplate, the BANZAI SPLIT cast bar, the cooldown bars and the unit-frame samples. `/banzai bars smooth|weave` does the same.
+Bars that take it: the Player, Target, Focus, Target of Target, Pet, party, raid, boss and arena enemy health and resource bars BANZAI dresses (BANZAI CLASSIC and BANZAI SPLIT), the targeted enemy nameplate, the BANZAI SPLIT cast bar, the cooldown bars and the unit-frame samples. `/banzai bars smooth|weave` does the same.
 
-Not affected: raid and arena frames, other nameplates, Details rows, and everything that is not a status bar - panels (glass, solid or parchment), chat, windows, buttons, tabs, borders and the minimap. The **Smooth health bars** switch above is separate and unchanged. Both textures are also registered with LibSharedMedia as status-bar textures named *BANZAI Smooth* and *BANZAI Weave*.
+Party, raid, boss and arena frames stay ElvUI's own secure unit frames at their own sizes: the material is laid on the bar, nothing is built on a frame in combat (a frame that appears in combat gets it when combat ends), and ElvUI's absorb, heal-prediction, debuff and dispel indicators stay above it. `/banzai frames` lists what each kind of frame shows.
+
+Not affected: raid pets and tank / assist frames, other nameplates, the game's own compact frames, Details rows, and everything that is not a status bar - panels (glass, solid or parchment), chat, windows, buttons, tabs, borders and the minimap. The **Smooth health bars** switch above is separate and unchanged. Both textures are also registered with LibSharedMedia as status-bar textures named *BANZAI Smooth* and *BANZAI Weave*.
 
 ## PANEL STYLE
 

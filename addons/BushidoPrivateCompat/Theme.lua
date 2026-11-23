@@ -70,7 +70,7 @@ local _, ns = ...
 local Theme = {}
 ns.Theme = Theme
 
-Theme.VERSION = '1.5.1'
+Theme.VERSION = '1.5.2'
 -- 1.5.0-dev1: a "-dev" build is a private proof (the AFK screen, the BANZAI settings and /banzai status say so)
 Theme.CHANNEL = string.find(Theme.VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 Theme.MEDIA = 'Interface\\AddOns\\BushidoPrivateCompat\\media\\'
@@ -800,6 +800,7 @@ function Theme:PaintBarWeave(entry)
 	else
 		self:Trough(entry.base)     -- ... and the plain dark trough again
 	end
+	entry.on = on -- 1.5.2: what this bar shows now (Theme:BarWeaveState)
 	return on
 end
 
@@ -836,6 +837,35 @@ end
 
 function Theme:BarWeaveOf(bar) return weaveOf[bar] end
 function Theme:BarWeaveCount() return #weaves end
+
+-- 1.5.2 what a bar shows, from BANZAI's own record of it (nothing is asked of the bar):
+--   NONE     never given the bar texture (not a bar BANZAI dresses)
+--   WEAVE    the slashed surface, filled and empty part
+--   SMOOTH   BANZAI Smooth is in use (or Banzai Art is off): the bar as it was
+--   REFUSED  the client did not let BANZAI build on it (asked again after the next loading screen)
+--   WAITING  BANZAI Weave is in use but the bar has no fill texture or size yet (laid out when it has)
+function Theme:BarWeaveState(bar)
+	local entry = bar and weaveOf[bar]
+	if not entry then return 'NONE' end
+	if entry.on then return 'WEAVE' end
+	if entry.refused then return 'REFUSED' end
+	local compat = ns.Compat
+	local wanted = self:BarTexture().strands ~= nil and entry.shown ~= false and not (compat and compat.Active and not compat.Active())
+	return wanted and 'WAITING' or 'SMOOTH'
+end
+
+-- 1.5.2 a loading screen is the one moment a refused bar is asked again (a group / arena frame's restrictions
+-- end with the instance): the refusal is forgotten for bars nothing was built on; the next refresh asks once more
+function Theme:ReconsiderBarWeave()
+	local asked = 0
+	for _, entry in ipairs(weaves) do
+		if entry.refused and not entry.sheet then
+			entry.refused = nil
+			asked = asked + 1
+		end
+	end
+	return asked
+end
 
 do -- the sheet is counted in screen pixels: a new UI scale or resolution counts again (events only, nothing polls)
 	local events = CreateFrame('Frame')

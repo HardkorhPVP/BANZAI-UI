@@ -99,6 +99,18 @@
 	              focus changes and clears, the end of combat, a frame the game
 	              hides and the features' own switches keep their 1.3.4 paths.
 	              Events only: nothing polls.
+
+	1.5.2 the arena enemy frames as compact BANZAI unit frames (ElvUI's arena
+	frames are the one arena enemy system; BushidoPrivateRestore sees to it that
+	the game's own arena frames are put away by ElvUI):
+	  chassis     a thin BANZAI outline around each enemy health bar, lime into
+	              purple (the Player / Target family's colours, one screen-thin
+	              line: no bamboo, no plate). Banzai's own frame on the entry's
+	              root, like the markers: built once out of combat, anchored to
+	              the health bar, shown while the unit frame plainly shows -
+	              nothing is made on the arena frame itself
+	  material    the bar texture in use is laid on the health bar by Compat.lua
+	              (two regions of the status bar; nothing of it is in this file)
 ]]
 local _, ns = ...
 local Theme = ns.Theme
@@ -125,6 +137,9 @@ PvP.EMPHASIS = {
 	MINIMAL = {},
 }
 PvP.LEVELS = { 'STRONG', 'CLEAR', 'MINIMAL' }
+-- 1.5.2 the arena enemy chassis: `inset` outside the health bar (on the dark trough's rim, inside the TARGET
+-- outline), `thickness` thick, lime (left) into purple (right)
+PvP.CHASSIS = { inset = 1, thickness = 1, alpha = 0.9 }
 
 local built = {}   -- [unit frame] = { root = frame, trinket = circle, target = marker, focus = marker, health = bar } - Banzai's own frames on the Banzai PvP layer
 local refused = {} -- [unit frame] = true: the client refused access - skipped until the next loading screen (never probed on a refresh)
@@ -181,7 +196,7 @@ end
 -- remembered (refused / entry.refused) until the next loading screen
 local function Usable(entry)
 	if entry.refused or refused[entry.frame] then return false end
-	for _, object in ipairs({ entry.frame, entry.health, entry.trinket, entry.target, entry.focus }) do
+	for _, object in ipairs({ entry.frame, entry.health, entry.trinket, entry.target, entry.focus, entry.chassis }) do
 		if object and not Accessible(object) then
 			entry.refused = true
 			return false
@@ -311,6 +326,35 @@ function PvP.Marker(parent, region, color, label, inset, labelX)
 	return m
 end
 
+-- 1.5.2 the chassis of an arena enemy frame: four thin edges around `region` (the health bar), the top and bottom
+-- edge running lime into purple, the left edge lime, the right edge purple. `parent` is Banzai's own (an entry's
+-- root, a preview sample); `region` is only anchored to. Built once: never resized or re-anchored.
+function PvP.Chassis(parent, region)
+	local K = PvP.CHASSIS
+	local lime, purple = Theme.COLORS.lime, Theme.COLORS.purple
+	local m = CreateFrame('Frame', nil, parent)
+	m:SetPoint('TOPLEFT', region, 'TOPLEFT', -K.inset, K.inset)
+	m:SetPoint('BOTTOMRIGHT', region, 'BOTTOMRIGHT', K.inset, -K.inset)
+	m:EnableMouse(false)
+	m.edges = {}
+	for i, side in ipairs({ { 'TOPLEFT', 'TOPRIGHT', true }, { 'BOTTOMLEFT', 'BOTTOMRIGHT', true }, { 'TOPLEFT', 'BOTTOMLEFT', false, lime }, { 'TOPRIGHT', 'BOTTOMRIGHT', false, purple } }) do
+		local t = m:CreateTexture(nil, 'BORDER')
+		t:SetTexture(Theme.WHITE)
+		t:SetPoint(side[1], m, side[1], 0, 0)
+		t:SetPoint(side[2], m, side[2], 0, 0)
+		if side[3] then
+			t:SetHeight(K.thickness)
+			Theme:Gradient(t, 'HORIZONTAL', lime, purple, K.alpha, K.alpha)
+		else
+			t:SetWidth(K.thickness)
+			t:SetVertexColor(side[4][1], side[4][2], side[4][3], K.alpha)
+		end
+		m.edges[i] = t
+	end
+	m:Hide()
+	return m
+end
+
 local function UnitIs(a, b)
 	if not UnitIsUnit then return false end
 	local ok, value = pcall(UnitIsUnit, a, b)
@@ -322,6 +366,7 @@ function PvP:UpdateMarkers(entry)
 	if not Settle(entry) then return end -- 1.3.4 (1.3.5: hidden at its root)
 	local unit = UnitOf(entry.frame, entry.def, entry.index)
 	local on = Active() and unit ~= nil and Visible(entry.frame)
+	if entry.chassis then entry.chassis:SetShown(on) end -- 1.5.2: with the enemy frame, whoever is targeted
 	entry.target:SetShown(on and UnitIs('target', unit))
 	entry.focus:SetShown(on and UnitIs('focus', unit))
 end
@@ -388,6 +433,8 @@ function PvP:Build()
 						entry.focus = PvP.Marker(root, health, PvP.COLORS.focus, 'FOCUS', 5, -42)
 						Raise(entry.target, 7)
 						Raise(entry.focus, 7)
+						entry.chassis = PvP.Chassis(root, health) -- 1.5.2
+						Raise(entry.chassis, 5) -- under the trinket (6) and the TARGET / FOCUS outlines (7)
 					end
 					built[frame] = entry
 				end

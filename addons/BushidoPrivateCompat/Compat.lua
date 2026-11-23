@@ -610,18 +610,98 @@ local function PlainPart(parent, part, scale, design)
 end
 
 -- 1.5.1: the bar texture in use on a dressed unit frame's health and resource bars (BANZAI CLASSIC: ElvUI fills
--- them; the material is two regions of the bar itself, under ElvUI's absorb / heal-prediction bars and texts). Not the raid frames (many small bars, left as they are) and
--- not the arena frames (1.3.4: nothing more is ever made on a PvP frame).
-Compat.WEAVE_SKIP = { '^ElvUF_Raid', '^ElvUF_Arena' }
+-- them; the material is two regions of the bar itself, under ElvUI's absorb / heal-prediction bars and texts).
+-- 1.5.2: every unit frame BANZAI dresses - the raid frames and the arena enemy frames too (1.5.1 left both out).
+-- The frames stay ElvUI's secure unit frames: nothing is created on the frame, no size, anchor, attribute or
+-- script of it is touched; the material is the same two regions of the status bar as on the Player's.
+--   in combat      nothing is handed over: the frame waits (Compat.WeavePending, at the end of combat / the next build)
+--   forbidden      a bar the client has made forbidden waits too (asked again at the next build, never forced); a
+--                  forbidden frame is asked nothing at all
+--   no name        a frame BANZAI cannot identify gets nothing
+Compat.WEAVE_SKIP = {} -- name patterns of dressed unit frames that never take the bar texture (1.5.2: none)
+local weaveWaiting = {} -- [unit frame] = true: wanted, not handed over yet
+
+-- the one question a forbidden object answers; anything else of it is left unasked
+local function Forbidden(object)
+	return type(object) ~= 'table' or (object.IsForbidden and object:IsForbidden()) and true or false
+end
+
 function Compat.WeaveUnitBars(frame)
-	local name = frame and frame.GetName and frame:GetName()
+	if Forbidden(frame) then return false end -- (asked first: a forbidden frame answers nothing else, not even its name)
+	local name = frame.GetName and frame:GetName()
 	if type(name) ~= 'string' or IsSecret(name) then return false end
 	for _, pattern in ipairs(Compat.WEAVE_SKIP) do
 		if string.find(name, pattern) then return false end
 	end
+	if InCombatLockdown() or (frame.Health and Forbidden(frame.Health)) then
+		weaveWaiting[frame] = true
+		return false
+	end
+	weaveWaiting[frame] = nil
 	Theme:BarWeave(frame.Health)
-	Theme:BarWeave(frame.Power)
+	if frame.Power and not Forbidden(frame.Power) then Theme:BarWeave(frame.Power) end
 	return true
+end
+
+-- the frames that waited (combat, a forbidden moment): handed over now when the client allows it. Returns how
+-- many still wait.
+function Compat.WeavePending()
+	local list = {}
+	for frame in pairs(weaveWaiting) do list[#list + 1] = frame end
+	local waiting = 0
+	for _, frame in ipairs(list) do
+		if not Compat.WeaveUnitBars(frame) and weaveWaiting[frame] then waiting = waiting + 1 end
+	end
+	return waiting
+end
+
+-- 1.5.2 /banzai frames: which bar texture each kind of unit frame shows (Theme:BarWeaveState of its health bar;
+-- read from BANZAI's own records - no unit frame is asked anything but its name in _G)
+Compat.COVERAGE = {
+	{ label = 'Player', names = { 'ElvUF_Player' } }, { label = 'Target', names = { 'ElvUF_Target' } }, { label = 'Focus', names = { 'ElvUF_Focus' } },
+	{ label = 'Target of Target', names = { 'ElvUF_TargetTarget' } }, { label = 'Pet', names = { 'ElvUF_Pet' } },
+	{ label = 'Party', prefix = 'ElvUF_PartyGroup1UnitButton', count = 5 },
+	{ label = 'Raid', raid = { 'Raid1', 'Raid2', 'Raid3' }, groups = 8, count = 5 },
+	{ label = 'Boss', prefix = 'ElvUF_Boss', count = 8 },
+	{ label = 'Arena enemies', prefix = 'ElvUF_Arena', count = 5 },
+}
+-- frames BANZAI does not dress, and why (reported, never forced)
+Compat.COVERAGE_EXCLUDED = {
+	'Raid pets, tank / assist frames: ElvUI\'s own bars (BANZAI does not dress them)',
+	'Nameplates: the current target\'s plate only (BANZAI > the targeted-nameplate treatment)',
+	'Battleground flag carriers and the game\'s own compact frames: Blizzard\'s, not BANZAI\'s',
+}
+function Compat.CoverageNames(def)
+	local names = {}
+	if def.names then
+		for _, name in ipairs(def.names) do names[#names + 1] = name end
+	elseif def.raid then
+		for _, raid in ipairs(def.raid) do
+			for group = 1, def.groups do
+				for i = 1, def.count do names[#names + 1] = 'ElvUF_' .. raid .. 'Group' .. group .. 'UnitButton' .. i end
+			end
+		end
+	else
+		for i = 1, def.count do names[#names + 1] = def.prefix .. i end
+	end
+	return names
+end
+
+function Compat:FrameCoverage()
+	local out = { texture = Theme:BarTexture().label, rows = {}, excluded = self.COVERAGE_EXCLUDED }
+	for _, def in ipairs(self.COVERAGE) do
+		local row = { label = def.label, frames = 0, WEAVE = 0, SMOOTH = 0, REFUSED = 0, WAITING = 0, NONE = 0 }
+		for _, name in ipairs(Compat.CoverageNames(def)) do
+			local frame = _G[name]
+			if type(frame) == 'table' then
+				row.frames = row.frames + 1
+				local state = (weaveWaiting[frame] and 'WAITING') or Theme:BarWeaveState(not Forbidden(frame) and frame.Health or nil)
+				row[state] = row[state] + 1
+			end
+		end
+		out.rows[#out.rows + 1] = row
+	end
+	return out
 end
 
 -- 0.5.0: smooth dark trough under the health bar in place of the slot art. It
@@ -1339,6 +1419,7 @@ function Compat:Build()
 	for i = 1, 5 do
 		Decorate(_G['ElvUF_Arena' .. i], self.ARENA_PARTS)
 	end
+	Compat.WeavePending() -- 1.5.2: unit frames whose bar texture waited (combat, a forbidden moment)
 	if _G.Minimap and not decorated[_G.Minimap] then
 		decorated[_G.Minimap] = true
 		self:BuildMinimap(_G.Minimap)
@@ -1601,6 +1682,7 @@ frame:SetScript('OnEvent', function(_, event)
 				E.data.RegisterCallback(Compat, 'OnProfileReset', 'Refresh')
 			end
 			Compat.inCombat = InCombatLockdown()
+			Theme:ReconsiderBarWeave() -- 1.5.2: a loading screen - a bar the client refused is asked once more
 			local ok, err = pcall(Compat.Build, Compat)
 			if not ok then Compat.lastError = tostring(err) end
 			for _, name in ipairs(MODULES) do SafeRefresh(ns[name]) end
@@ -1618,7 +1700,7 @@ frame:SetScript('OnEvent', function(_, event)
 		Compat:UpdateBranding()
 	elseif event == 'PLAYER_REGEN_ENABLED' then
 		Compat.inCombat = false
-		if pending then Compat:Build() end
+		if pending then Compat:Build() else Compat.WeavePending() end -- 1.5.2: (a build hands the waiting bars over itself)
 		if Compat.minimapButtonsPending then Compat:RefreshMinimapButtonBar() end
 		Compat:UpdateBranding()
 	elseif event == 'GROUP_ROSTER_UPDATE' or event == 'ARENA_OPPONENT_UPDATE' then
