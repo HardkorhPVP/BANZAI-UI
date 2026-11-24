@@ -14,6 +14,7 @@ The chat sits in a bamboo-framed panel **flush with the left edge of the screen*
 - ElvUI's own chat backdrop is turned off while the Banzai frame is on; the frame is drawn by Banzai Art around ElvUI's chat.
 - With the frame off, the chat stays where BANZAI placed it without a panel.
 - The panel takes the material exactly like Details, the minimap and the BUFFS panel; a parchment chat keeps bright, outlined text.
+- **Retail / Midnight (1.5.3):** the chat text fills the inside of the frame, and the tabs of the windows docked with General ("General", "Loot / Trade", your own) stand on the frame's top border, left and right of the CHAT title. They are the game's own tabs - click, right-click menu and drag work as always - set in the title's font at half its size with a dark outline: the selected tab fully opaque, the others at half opacity, brighter under the pointer. A tab name too long for its place is shortened and shown whole in its tooltip.
 
 ## WoW Forever
 
@@ -21,4 +22,4 @@ ElvUI's installer there leaves a second, undocked chat window ("Loot / Trade"). 
 
 ## Not changed
 
-Chat channels, tabs, chat history, chat settings in ElvUI other than the backdrop and position, and any chat addon's behaviour.
+Chat channels, what the tabs do, chat history, the edit box, chat settings in ElvUI other than the backdrop, the panel's size and position (and, on Retail, the "> <" marks around the selected tab's name), and any chat addon's behaviour.

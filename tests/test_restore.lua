@@ -110,7 +110,7 @@ test('first login applies nothing by itself (public release: AUTO_APPLY is empty
 	expectEq(E.data:GetCurrentProfile(), NAME, 'ElvUI profile switched')
 	expectEq(HK_POPUPS[#HK_POPUPS], 'BANZAI_RELOAD', 'reload prompt')
 	expectEq(record().layer, T.LAYER, "Banzai layer " .. T.LAYER .. " recorded")
-	expectEq(record().applied.version, '1.5.2', 'version recorded')
+	expectEq(record().applied.version, '1.5.3', 'version recorded')
 end)
 
 test('existing ElvUI profiles are untouched; previous state recorded', function()
@@ -306,9 +306,9 @@ test('chat panels: no black box; chat clear of the taller bottom bar', function(
 	local p = profile()
 	expectEq(p.chat.panelBackdrop, 'HIDEBOTH', 'chat backdrops off')
 	expectEq(p.chat.hideChatToggles, true, 'chat toggle buttons off')
-	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,42', '1.2.0: chat in the middle of its frame, the frame flush with the left screen edge, above the 32-unit bar')
-	expectEq(p.chat.panelWidth, 430, 'chat panel = frame width - insets')
-	expectEq(p.chat.panelHeight, 140, 'chat panel = frame height - insets')
+	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,9,41', '1.5.3: the chat panel fills its frame - 4 inside the left stalk less the 5 ElvUI keeps around the text (1.2.0: x 31), 9 above the 32-unit bar')
+	expectEq(p.chat.panelWidth, 474, '1.5.3: the chat panel = the room between the side stalks (472.31) less 2 x 4, plus the 10 ElvUI keeps around the text (1.5.2: 430)')
+	expectEq(p.chat.panelHeight, 159, '1.5.3: the chat panel = the 127 of text (140 less 4 below and 9 above) plus the 32 ElvUI keeps above it (1.5.2: 140)')
 	expectEq(p.datatexts.panels.Bushido.enable, false, 'Bushido datatext panel off')
 end)
 
@@ -326,9 +326,9 @@ test('Details: Bushido profile, readable rows, side by side DAMAGE | HEALING', f
 	expectEq(Details.always_use_profile_exception.Darrensdrood, true, 'kept across logins')
 	local left, right = HK_DetailsWindow, HK_DetailsWindow2
 	expectEq(right.libwindow.point, 'BOTTOMRIGHT', 'right window in the corner')
-	expectEq(right.libwindow.x, -47.15, 'right window x (in the middle of the parallelogram frame)')
+	expectEq(right.libwindow.x, -29.995, '1.5.3: right window x - 4 inside the right stalk (1.5.2: -47.15)')
 	expectEq(right.libwindow.y, 42, 'frame sits on the 32-unit bottom panel')
-	expectEq(left.libwindow.x, -47.15 - 207.5 - 15, 'left window beside it (1.3.6: across the 15-unit centre gutter)')
+	expectEq(left.libwindow.x, -29.995 - 224.655 - 15, 'left window beside it (1.3.6: across the 15-unit centre gutter)')
 	expectEq(left.libwindow.y, 42, 'same baseline')
 	-- 0.6.0: big titles in the display font (damage red, healing green), sleek bars, larger row text centred over them
 	local S = T.DETAILS_STYLE
@@ -352,7 +352,7 @@ test('Details: Bushido profile, readable rows, side by side DAMAGE | HEALING', f
 			-- 0.7.0: Banzai titles on the frame border, rows lower, no percentage, class colours, texts centred
 			expectEq(window.attribute_text.enabled, false, 'Details title text off (Banzai draws DAMAGE / HEALING on the frame border)')
 			expectEq(window.row_info.row_offsets.top, S.rowOffset, 'rows start lower')
-			expect(S.rowOffset <= -6, 'several units lower than 0.6.0')
+			expectEq(S.rowOffset, -4, '1.5.3: the first row 4 under the window top (0.7.0 - 1.5.2: 8) - the window top itself is 4 higher, so the row text starts 12 under the top stalk, clear of the title accents')
 			expectEq(window.row_info.texture_class_colors, true, 'class-coloured bars')
 			expectEq(window.row_info.texture_background_class_color, false, 'dark track, not a second class colour')
 			expectEq(window.row_info.textR_show_data[3], false, 'no percent column')
@@ -369,8 +369,8 @@ test('Details: Bushido profile, readable rows, side by side DAMAGE | HEALING', f
 	expectEq(string.format(values.format_ts, '245K', '6.1K'), '245K (6.1K)', 'total (per second)')
 	expectEq(string.format(values.format_tp, '6.1K', '100%'), '6.1K', 'DPS / HPS display: the value alone')
 	expectEq(values.use_alignment, false, 'one string per row')
-	expectNear(left.posicao.normal.w, 207.5 / 0.75, 'width in window scale (1.3.6: 207.5, was 212)')
-	expectNear(left.posicao.normal.h, 124 / 0.75, 'height in window scale (five rows)')
+	expectNear(left.posicao.normal.w, 224.655 / 0.75, 'width in window scale (1.5.3: 224.655; 1.3.6: 207.5)')
+	expectNear(left.posicao.normal.h, 128 / 0.75, 'height in window scale (1.5.3: 128 - ten rows of 17 in 170.7; 1.5.2: 124 - nine)')
 	expectEq(left.display[2], 1, 'left: damage')
 	expectEq(right.display[2], 2, 'right: healing')
 	expectEq(left.ungrouped and right.ungrouped, true, 'not snapped into a stack')
@@ -417,11 +417,11 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 	expect(string.find(page.args.brand.image(), 'BanzaiLogo', 1, true), 'Banzai logo above the list')
 	local brand = HK_Plain(page.args.brand.name())
 	expect(string.find(brand, 'UI BY HARDKORH', 1, true), 'UI BY HARDKORH')
-	expect(string.find(brand, 'BANZAI 1.5.2', 1, true), 'version in the GUI')
+	expect(string.find(brand, 'BANZAI 1.5.3', 1, true), 'version in the GUI')
 	expect(string.find(brand, 'release', 1, true) and not string.find(brand, 'PROOF', 1, true), 'the channel: a release, no proof label')
-	expect(string.find(HK_Plain(page.args.home.args.header.name), 'BANZAI 1.5.2', 1, true), 'version on HOME')
+	expect(string.find(HK_Plain(page.args.home.args.header.name), 'BANZAI 1.5.3', 1, true), 'version on HOME')
 	local home = HK_Plain(page.args.home.args.status.name())
-	for _, needle in ipairs({ 'BANZAI 1.5.2', 'Darrensdrood - Stormrage', 'Druid', 'Feral', 'SPEC ROLE   DPS', NAME, 'ACTIVE', 'CHARACTER SYNC', 'BANZAI MASTER', 'COMPONENTS' }) do
+	for _, needle in ipairs({ 'BANZAI 1.5.3', 'Darrensdrood - Stormrage', 'Druid', 'Feral', 'SPEC ROLE   DPS', NAME, 'ACTIVE', 'CHARACTER SYNC', 'BANZAI MASTER', 'COMPONENTS' }) do
 		expect(string.find(home, needle, 1, true), 'HOME shows ' .. needle)
 	end
 	expectEq(Find(page.args.home, 'apply').type, 'execute', 'Apply / repair')
@@ -510,7 +510,7 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 	-- CHARACTER SYNC: status cards and buttons, no console dump
 	local sync = SyncCards()
 	expectEq(page.args.sync.childGroups, 'tab', '1.0.1: STATUS / WHAT SYNCS / DIAGNOSTICS')
-	expect(string.find(HK_Plain(page.args.sync.args.header.name()), 'BANZAI 1.5.2', 1, true), 'the version on CHARACTER SYNC')
+	expect(string.find(HK_Plain(page.args.sync.args.header.name()), 'BANZAI 1.5.3', 1, true), 'the version on CHARACTER SYNC')
 	for _, card in ipairs({ 'this', 'master', 'version', 'synced', 'owned', 'never', 'components', 'characters' }) do
 		expectEq(sync[card].type, 'group', 'card ' .. card)
 		expectEq(sync[card].inline, true, card .. ' drawn as a card')
@@ -528,7 +528,7 @@ test('BANZAI options 1.0.0: one settings app - logo, UI BY HARDKORH and the vers
 		expect(string.find(plan, needle, 1, true), 'synced: ' .. needle)
 	end
 	expectEq(Find(page.args.backup, 'restore').disabled(), false, 'restore available')
-	expect(string.find(HK_Plain(page.args.backup.args.snapshot.args.status.name()), 'Banzai 1.5.2 applied', 1, true), 'current snapshot')
+	expect(string.find(HK_Plain(page.args.backup.args.snapshot.args.status.name()), 'Banzai 1.5.3 applied', 1, true), 'current snapshot')
 end)
 
 test('BANZAI options: 0.4.0 settings write the Banzai profile and the art settings', function()
@@ -613,7 +613,7 @@ test('BANZAI options: 0.5.0 settings (smooth bars, cooldown bars, bottom panel h
 	expectEq(p.actionbar.bar4.enabled, false, 'and hidden')
 	l.barHeight.set(nil, 36)
 	expectEq(compat.barHeight, 36, 'panel height')
-	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,46', 'chat follows the panel')
+	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,9,45', 'chat follows the panel')
 	expectEq(p.movers.ElvAB_6, 'BOTTOM,ElvUIParent,BOTTOM,0,46', 'action bars keep their breathing room above the panel')
 	expectEq(HK_DetailsWindow2.libwindow.y, 46, 'Details follows the panel')
 	l.barHeight.set(nil, 32)
@@ -787,12 +787,12 @@ test('upgrade from 0.3.0 at addon load: used on this login, no reload prompt', f
 	expectEq(ElvDB.profiles[NAME], p, 'same profile table (not rewritten)')
 	expectEq(r.layer, 3, 'not finished until Details is laid out')
 	expectEq(ns.Restore:OnLogin(), true, 'completed after login')
-	expectEq(HK_DetailsWindow2.libwindow.x, -47.15, 'Details composition')
+	expectEq(HK_DetailsWindow2.libwindow.x, -29.995, 'Details composition')
 	expectEq(r.layer, T.LAYER, 'layer recorded')
-	expectEq(r.applied.version, '1.5.2', 'version recorded')
+	expectEq(r.applied.version, '1.5.3', 'version recorded')
 	expectEq(r.previous.elvProfile, 'HARDKORHUI', 'original previous profile kept for rollback')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.2', 1, true), 'update reported in chat')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.3', 1, true), 'update reported in chat')
 	expectEq(ns.Restore:OnLogin(), nil, 'runs once')
 end)
 
@@ -829,12 +829,12 @@ test('upgrade from 0.4.0 at addon load: smooth bars, cooldown bars off, action b
 	expectEq(p.movers.ElvAB_1, 'BOTTOM,ElvUIParent,BOTTOM,0,78', 'bottom bars up (bar 6 at panel + 10, bar 1 a circle row above)')
 	expectEq(p.movers.ElvAB_6, 'BOTTOM,ElvUIParent,BOTTOM,0,42', 'bar 6: 10 above the 32-unit panel')
 	expectEq(p.actionbar.bar1.buttonSize, 30, 'circular buttons')
-	expectEq(p.chat.panelWidth, 430, 'chat panel inside its frame')
+	expectEq(p.chat.panelWidth, 474, 'chat panel inside its frame (1.5.3: filling it)')
 	expectEq(p.unitframe.units.pet.width, 333, 'in-game change kept')
 	expectEq(p.darrenTweak, 'kept', 'unrelated keys kept')
 	expectEq(ns.Restore:OnLogin(), true, 'completed after login')
 	expectEq(r.layer, T.LAYER, 'current layer')
-	expectEq(r.applied.version, '1.5.2', 'version')
+	expectEq(r.applied.version, '1.5.3', 'version')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectEq(r.previous.minimapButton.y, MBB_Y, 'rollback record kept')
 end)
@@ -917,7 +917,7 @@ test('/banzai opens the BANZAI options on HOME; status shows BANZAI 1.2.1; /bush
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('status')
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.5.2', 1, true), 'status reports BANZAI 1.5.1')
+	expect(string.find(text, 'BANZAI 1.5.3', 1, true), 'status reports BANZAI 1.5.1')
 	expect(string.find(text, 'Player / Target / Focus / Target-of-Target 50% of Bushido\'s width, AFK screen: Banzai, tooltip theme: BANZAI', 1, true), '1.0.0 state reported')
 	expect(string.find(text, 'spec role: DPS (Feral), frame layout in use: DPS', 1, true), 'role reported')
 	expect(string.find(text, 'character sync: ', 1, true), 'sync state reported')
@@ -926,7 +926,7 @@ test('/banzai opens the BANZAI options on HOME; status shows BANZAI 1.2.1; /bush
 	expect(string.find(text, 'target cooldown bars (ElvUI 2 + 4): off', 1, true), 'cooldown bars reported')
 	expect(string.find(text, 'Banzai tracker: on', 1, true), 'tracker state reported')
 	expect(string.find(text, 'all present', 1, true), 'status-bar textures reported present')
-	expectEq(StaticPopupDialogs.BANZAI_RELOAD.text:find('1.5.2', 1, true) ~= nil, true, 'reload dialog names 1.5.2')
+	expectEq(StaticPopupDialogs.BANZAI_RELOAD.text:find('1.5.3', 1, true) ~= nil, true, 'reload dialog names 1.5.3')
 end)
 
 ---------------------------------------------------------------------------
@@ -1108,7 +1108,7 @@ test('character sync: BANZAI MASTER captured, alt applied with its backup, visua
 	expectEq(m.class, 'Druid', 'class')
 	expectEq(m.spec, 'Feral', 'spec')
 	expectEq(m.role, 'DPS', 'role')
-	expectEq(m.version, '1.5.2', 'Banzai version')
+	expectEq(m.version, '1.5.3', 'Banzai version')
 	expectEq(m.schema, ns.Sync.SCHEMA, 'configuration schema')
 	expectEq(m.specID, 103, 'spec id')
 	expectEq(m.revision, 1, 'configuration #1')
@@ -1119,7 +1119,7 @@ test('character sync: BANZAI MASTER captured, alt applied with its backup, visua
 	S:Capture()
 	expectEq(m.revision, 1, 'nothing changed: same revision')
 	local card = HK_Plain(page.master.args.info.name())
-	for _, needle in ipairs({ KEY, 'Druid', 'FERAL', 'DPS', '1.5.2', 'SCHEMA 3', '#1' }) do expect(string.find(card, needle, 1, true), 'master card shows ' .. needle) end
+	for _, needle in ipairs({ KEY, 'Druid', 'FERAL', 'DPS', '1.5.3', 'SCHEMA 3', '#1' }) do expect(string.find(card, needle, 1, true), 'master card shows ' .. needle) end
 	expect(string.find(HK_Plain(page.version.args.text.name()), 'In step', 1, true), 'version drift: none')
 	expectEq(page.master.args.capture.hidden(), false, 'CAPTURE MASTER NOW on the master')
 
@@ -1844,7 +1844,7 @@ test('1.0.1 sync: no master until Darren sets one; SET AS BANZAI MASTER captures
 	cards.master.args.setMaster.func()
 	local m = S:Master()
 	expectEq(m.key .. '|' .. m.classToken .. '|' .. m.spec .. '|' .. m.role, KEY .. '|DRUID|Balance|DPS', 'identity: character, class, spec, role')
-	expectEq(m.version .. '|' .. m.schema, '1.5.2|' .. S.SCHEMA, 'BANZAI version and configuration schema')
+	expectEq(m.version .. '|' .. m.schema, '1.5.3|' .. S.SCHEMA, 'BANZAI version and configuration schema')
 	local keys = {}
 	for k in pairs(m.config) do keys[#keys + 1] = k end
 	table.sort(keys)
@@ -1855,7 +1855,7 @@ test('1.0.1 sync: no master until Darren sets one; SET AS BANZAI MASTER captures
 	local text = T.Serialize(m.config)
 	for _, word in ipairs({ 'Balance', 'Feral', 'Druid', 'Restoration' }) do expect(not string.find(text, word, 1, true), 'no Druid identity in the setup (' .. word .. ')') end
 	local card = HK_Plain(cards.master.args.info.name())
-	for _, needle in ipairs({ KEY, 'Druid', 'BALANCE', 'DPS', 'BANZAI 1.5.2', 'SCHEMA ' .. S.SCHEMA, '#' }) do expect(string.find(card, needle, 1, true), 'master card: ' .. needle) end
+	for _, needle in ipairs({ KEY, 'Druid', 'BALANCE', 'DPS', 'BANZAI 1.5.3', 'SCHEMA ' .. S.SCHEMA, '#' }) do expect(string.find(card, needle, 1, true), 'master card: ' .. needle) end
 	expectEq(cards.master.args.setMaster.hidden(), true, 'set')
 	expectEq(cards.master.args.capture.hidden(), false, 'CAPTURE MASTER NOW on the master')
 end)
@@ -1882,7 +1882,7 @@ test('1.0.1 sync: an unsynced alt stays untouched until Darren clicks - no autom
 	expectEq(cards.this.args.apply.hidden(), false, 'APPLY BANZAI offered')
 	expectEq(cards.this.args.restore.hidden(), true, 'nothing to restore')
 	local status = HK_Plain(cards.synced.args.list.name())
-	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'MASTER BANZAI VERSION   1.5.2', 'THIS CHARACTER   ' .. ROGUE, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   none', 'SYNC STATE   THIS CHARACTER IS NOT SYNCED' }) do
+	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'MASTER BANZAI VERSION   1.5.3', 'THIS CHARACTER   ' .. ROGUE, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   none', 'SYNC STATE   THIS CHARACTER IS NOT SYNCED' }) do
 		expect(string.find(status, needle, 1, true), 'sync status: ' .. needle)
 	end
 	local diag = HK_Plain(cards.components.args.list.name())
@@ -1950,7 +1950,7 @@ test('1.0.1 sync: APPLY BANZAI on a DPS alt - backup first, its own class / spec
 	expectEq(HasKey(compatDB(), { 'classtoken', 'spec', 'specid' }), nil, 'no class / spec identity in its BANZAI settings')
 	expect(compat.cdTracked.ROGUE[5277] == false and compat.cdTracked.DRUID == nil, 'its own tracked cooldowns kept, none of the Druid\'s')
 	local status = HK_Plain(cards.synced.args.list.name())
-	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   BANZAI 1.5.2, schema ' .. S.SCHEMA, 'SYNC STATE   BANZAI SYNCED' }) do
+	for _, needle in ipairs({ 'MASTER   ' .. KEY, 'CLASS   ROGUE', 'SPEC   ASSASSINATION', 'ROLE   DPS', 'APPLIED CONFIGURATION   BANZAI 1.5.3, schema ' .. S.SCHEMA, 'SYNC STATE   BANZAI SYNCED' }) do
 		expect(string.find(status, needle, 1, true), 'sync status: ' .. needle)
 	end
 	-- gameplay
@@ -2294,7 +2294,7 @@ test('1.0.2 tracker: APPLY BANZAI with the Banzai tracker on parks Blizzard\'s t
 	HK_PRINTS = {}
 	ns.Restore:Status()
 	expect(string.find(table.concat(HK_PRINTS, '\n'), 'Blizzard\'s tracker: parked while the Banzai tracker shows', 1, true), '/banzai status says so')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.5.2', 1, true), '/banzai status: 1.5.1')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.5.3', 1, true), '/banzai status: 1.5.1')
 	expectEq(#HK_GAMEPLAY_CALLS, 0, 'no gameplay call')
 end)
 
@@ -2763,12 +2763,12 @@ test('1.2.0 BUFFS panel settings: on / rows / position written into the Banzai p
 	expect(string.find(status, 'action buttons: SQUARE', 1, true), 'status names the button style')
 end)
 
-test('1.2.0 chat flush with the left screen edge: ElvUI\'s chat panel at x 31 (same size, same bottom), Banzai Art\'s frame in step', function()
+test('1.2.0 chat flush with the left screen edge: ElvUI\'s chat panel inside it (1.5.3: at x 9, 474 x 159, filling the frame; 1.2.0 - 1.5.2: x 31, 430 x 140), Banzai Art\'s frame in step', function()
 	local p = profile()
-	expectEq(T.CHAT.x, 31, 'the chat panel')
-	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,' .. (compat.barHeight + 10), 'mover (x 31, 10 above the information panel)')
-	expectEq(p.chat.panelWidth .. 'x' .. p.chat.panelHeight, '430x140', 'same size')
-	expectEq(T.ChatMover(32), 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,42', 'same bottom on the information panel')
+	expectEq(T.CHAT.x, 9, 'the chat panel')
+	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,9,' .. (compat.barHeight + 9), 'mover (x 9, 9 above the information panel: the text 14 above it, 4 over the bottom stalk)')
+	expectEq(p.chat.panelWidth .. 'x' .. p.chat.panelHeight, '474x159', '1.5.3: the filled size')
+	expectEq(T.ChatMover(32), 'BOTTOMLEFT,UIParent,BOTTOMLEFT,9,41', 'on the information panel')
 end)
 
 test('1.2.1 BUFFS settings: written from the configuration only - the same movers whatever the auras do; on / off, 2 / 3 rows, combat, Character Sync', function()
@@ -3058,7 +3058,7 @@ test('1.3.0 /banzai status names the frame style (chosen and this session\'s) an
 	ns.Restore:Status()
 	local text = table.concat(HK_PRINTS, '\n')
 	expect(string.find(text, 'frame style: BANZAI CLASSIC (this session: BANZAI CLASSIC), Details meter style: BANZAI CURRENT', 1, true), 'status line')
-	expect(string.find(text, 'BANZAI 1.5.2', 1, true), 'version')
+	expect(string.find(text, 'BANZAI 1.5.3', 1, true), 'version')
 end)
 
 test('1.3.0 review: the health-percentage switch keeps working while the profile carries the split layer (health under the bars)', function()
@@ -3234,7 +3234,7 @@ test('licensed display-font status and texts: /banzai status identifies Shojumar
 	HK_PRINTS = {}
 	ns.Restore:Status()
 	local text = table.concat(HK_PRINTS, '\n')
-	expect(string.find(text, 'BANZAI 1.5.2', 1, true), 'status: BANZAI 1.5.1')
+	expect(string.find(text, 'BANZAI 1.5.3', 1, true), 'status: BANZAI 1.5.1')
 	expect(string.find(text, 'Display font: Shojumaru at 105%, license: SIL Open Font License 1.1, registered:', 1, true), 'status: licensed Shojumaru default at 105%')
 	CompatStub.Theme = nil
 	local page = ns.Options:Build()
@@ -3349,9 +3349,9 @@ test('licensed selection-lock version-only update (no layer key, no setting, no 
 	r.applied.version = '1.3.4'
 	HK_PRINTS, HK_POPUPS = {}, {}
 	expectEq(ns.Restore:OnLogin(), true, 'the update runs at login')
-	expectEq(r.applied.version, '1.5.2', 'version recorded')
+	expectEq(r.applied.version, '1.5.3', 'version recorded')
 	local said = table.concat(HK_PRINTS, '\n')
-	expect(string.find(said, 'updated to BANZAI 1.5.2 (Retail 12.1.5 (build 69848, Interface 120105)): BANZAI Weave now covers party, raid, boss and arena enemy frames, and arena enemies show as one frame system; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', 1, true), 'the update names the release, the client and what is new')
+	expect(string.find(said, 'updated to BANZAI 1.5.3 (Retail 12.1.5 (build 69848, Interface 120105)): chat and the DAMAGE / HEALING meters now fill their bamboo frames, and the chat tabs stand on the CHAT header. /banzai forever shows the client report.', 1, true), 'the update names the release, the client and what is new')
 	expect(string.find(said, '/banzai forever shows the client report', 1, true), 'and where the client report is')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
 	expectEq(r.layer, T.LAYER, 'the layer as it was')
@@ -3367,14 +3367,14 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	local left, right = HK_DetailsWindow, HK_DetailsWindow2
 	local PX = 0.71 * 1440 / 768
 	local R = ns.Restore
-	expectEq(L.width .. '/' .. L.gap .. '/' .. L.right, '207.5/15/-47.15', 'narrower windows, a real gutter, the right edge kept')
-	expectEq(2 * L.width + L.gap, 2 * 212 + 6, 'as wide as the 1.3.5 composition (430)')
+	expectEq(L.width .. '/' .. L.gap .. '/' .. L.right, '224.655/15/-29.995', '1.5.3: wider windows around the same 15-unit gutter (1.3.6: 207.5/15/-47.15)')
+	expectNear(2 * L.width + L.gap, 472.31 - 2 * 4, '1.5.3: the composition fills the frame - the 472.31 between the side stalks less 4 each side (1.3.5 - 1.5.2: 430)')
 	expect(math.abs(L.gap * PX - 20) < 0.05, 'the gutter about 20 screen pixels at Darren\'s scale')
 	R:LayoutDetails()
-	expectEq(right.libwindow.x, -47.15, 'the right window\'s right edge where it was')
-	expectEq(left.libwindow.x - L.width, -47.15 - 212 - 6 - 212, 'the left window\'s left edge where it was')
+	expectEq(right.libwindow.x, -29.995, '1.5.3: the right window\'s right edge 4 inside the right stalk')
+	expectNear(left.libwindow.x - L.width, -29.995 - 464.31, '1.5.3: the left window\'s left edge 4 inside the left stalk')
 	expectNear(left.posicao.normal.w, right.posicao.normal.w, 'the two meters equally wide')
-	expectNear(left.posicao.normal.w * left.window_scale, 207.5, '207.5 on screen (window scale 0.75)')
+	expectNear(left.posicao.normal.w * left.window_scale, 224.655, '224.655 on screen (window scale 0.75)')
 	local gutter = (right.libwindow.x - L.width) - left.libwindow.x
 	expectNear(gutter, 15, 'the gutter between the left window\'s right edge and the right window\'s left edge')
 	-- every row inside its own window: Details anchors a row at the window's left edge + space.left + row_offsets.left and
@@ -3417,13 +3417,13 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	HK_PRINTS, HK_POPUPS = {}, {}
 	local n0 = #HK_TIMERS
 	expectEq(R:OnLogin(), true, 'the update runs at login')
-	expectEq(r.applied.version, '1.5.2', 'version recorded')
-	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.2 (Retail 12.1.5', 1, true), 'the chat names the release and the client')
+	expectEq(r.applied.version, '1.5.3', 'version recorded')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'updated to BANZAI 1.5.3 (Retail 12.1.5', 1, true), 'the chat names the release and the client')
 	expectEq(#HK_POPUPS, 0, 'no reload needed')
-	expectNear(left.posicao.normal.w, 207.5 / 0.75, 'left window narrower')
-	expectNear(right.posicao.normal.w, 207.5 / 0.75, 'right window narrower')
-	expectEq(left.libwindow.x, -47.15 - 207.5 - 15, 'left window across the gutter')
-	expectEq(right.libwindow.x, -47.15, 'right window where it was')
+	expectNear(left.posicao.normal.w, 224.655 / 0.75, 'left window narrower')
+	expectNear(right.posicao.normal.w, 224.655 / 0.75, 'right window narrower')
+	expectEq(left.libwindow.x, -29.995 - 224.655 - 15, 'left window across the gutter')
+	expectEq(right.libwindow.x, -29.995, 'right window where it was')
 	expectEq(table.concat(right.display, ','), '7,3,1', 'what the right window shows and its segment untouched')
 	expectEq(left.ativa, false, 'a closed window stays closed')
 	expect(#HK_TIMERS > n0, 'placed once more after Details has settled')
@@ -3445,7 +3445,7 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	expectEq(left.libwindow.x, -47.15 - 212 - 6, 'in combat: nothing moved yet')
 	HK_IN_COMBAT = false
 	HK_Fire('PLAYER_REGEN_ENABLED')
-	expectEq(left.libwindow.x, -47.15 - 207.5 - 15, 'placed when combat ends')
+	expectEq(left.libwindow.x, -29.995 - 224.655 - 15, 'placed when combat ends')
 	expectEq(table.concat(right.display, ',') .. '/' .. tostring(left.ativa), '7,3,1/false', 'still geometry only')
 	expectEq(R.detailsGeometryPending, nil, 'once')
 	-- the full arrangement (APPLY, Arrange side by side) still opens both and shows DAMAGE | HEALING
@@ -3462,13 +3462,179 @@ test('1.3.6 the Details centre gutter: the two windows equally narrower (207.5, 
 	ns.Flavor.IsForever = function() return true end
 	R:LayoutDetails()
 	ns.Flavor.IsForever = oldIsForever
-	expectNear(left.posicao.normal.w, 207.5 / 0.75, 'left geometry is reapplied after Details reflows its display')
-	expectNear(right.posicao.normal.w, 207.5 / 0.75, 'right geometry is reapplied after Details reflows its display')
-	expectEq(left.libwindow.x, -47.15 - 207.5 - 15, 'left anchor survives display reflow')
-	expectEq(right.libwindow.x, -47.15, 'right anchor survives display reflow')
+	expectNear(left.posicao.normal.w, 224.655 / 0.75, 'left geometry is reapplied after Details reflows its display')
+	expectNear(right.posicao.normal.w, 224.655 / 0.75, 'right geometry is reapplied after Details reflows its display')
+	expectEq(left.libwindow.x, -29.995 - 224.655 - 15, 'left anchor survives display reflow')
+	expectEq(right.libwindow.x, -29.995, 'right anchor survives display reflow')
 	left.SetDisplay, right.SetDisplay = oldLeftDisplay, oldRightDisplay
 	expectEq(left.ativa, true, 'opened')
 	expectEq(left.display[2] .. '|' .. right.display[2], '1|2', 'DAMAGE | HEALING')
+end)
+
+---------------------------------------------------------------------------
+-- 1.5.3 CHAT + DETAILS FULL-CHASSIS LAYOUT (what BushidoPrivateRestore writes)
+---------------------------------------------------------------------------
+test('1.5.3 chat panel: ElvUI\'s own panel settings give the chat text the room inside the unchanged BANZAI CHAT frame - 4.155 from the side stalks, 4 above the bottom stalk, 9 under the top one; the tab marks off; written with every character layer and following the bottom panel\'s height', function()
+	local C = T.CHAT
+	expectEq(T.Filled(), true, 'the filled layout on Retail / Midnight')
+	expectEq(C, T.CHAT_FILL, 'the filled chat numbers are the ones in use')
+	expectEq(C.x .. '/' .. C.inset .. '/' .. C.width .. '/' .. C.height, '9/9/474/159', 'ElvUI\'s chat panel')
+	expectEq(T.CHAT_152.x .. '/' .. T.CHAT_152.inset .. '/' .. T.CHAT_152.width .. '/' .. T.CHAT_152.height, '31/10/430/140', '1.5.2\'s numbers kept beside them (WoW Forever)')
+	-- the BANZAI CHAT frame (Banzai Art, unchanged): left -0.655, 493.31 x 161, bottom = bar - 0.5, content inset 10.5
+	local FRAME = { left = -0.655, width = 493.31, height = 161, inset = 10.5 }
+	for _, bar in ipairs({ 24, 32, 40 }) do
+		-- ElvUI's chat text (Chat.lua PositionChat): 5 inside the panel, 10 narrower, 32 lower than the panel
+		local x, y, w, h = C.x + 5, bar + C.inset + 5, C.width - 10, C.height - 32
+		local inL, inR = FRAME.left + FRAME.inset, FRAME.left + FRAME.width - FRAME.inset
+		local inB, inT = bar - 0.5 + FRAME.inset, bar - 0.5 + FRAME.height - FRAME.inset
+		expectNear(x - inL, 4.155, 'bar ' .. bar .. ': left gutter')
+		expectNear(inR - (x + w), 4.155, 'bar ' .. bar .. ': right gutter')
+		expectNear(y - inB, 4, 'bar ' .. bar .. ': bottom gutter')
+		expectNear(inT - (y + h), 9, 'bar ' .. bar .. ': top gutter, under the CHAT title')
+		expectEq(T.ChatMover(bar), 'BOTTOMLEFT,UIParent,BOTTOMLEFT,9,' .. (bar + 9), 'bar ' .. bar .. ': the panel\'s mover')
+	end
+	expectEq((C.width - 10) .. 'x' .. (C.height - 32), '464x127', 'the chat text (1.5.2: 420 x 108)')
+	-- the same numbers as Banzai Art's (its tests measure the frame against them)
+	local art = { x = 14, width = 464, height = 127, bottom = 14 } -- BanzaiCompat.CHAT_CONTENT
+	expectEq((C.x + 5) .. '/' .. (C.width - 10) .. '/' .. (C.height - 32) .. '/' .. (C.inset + 5), art.x .. '/' .. art.width .. '/' .. art.height .. '/' .. art.bottom, 'in step with Banzai Art\'s CHAT_CONTENT')
+	-- ElvUI's settings, and only these
+	local p = { chat = { font = 'kept', editBoxPosition = 'ABOVE_CHAT', panelBackdrop = 'HIDEBOTH' }, movers = { Other = 'kept' } }
+	local chat = T.ApplyChatLayout(p, 36)
+	expectEq(chat.panelWidth .. 'x' .. chat.panelHeight, '474x159', 'the panel\'s size')
+	expectEq(chat.tabSelector, 'NONE', 'ElvUI\'s "> <" marks around the selected tab off: the selected tab is the opaque one')
+	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,9,45', 'the panel\'s place above a 36-unit bar')
+	expectEq(chat.font .. '/' .. chat.editBoxPosition .. '/' .. chat.panelBackdrop .. '/' .. p.movers.Other, 'kept/ABOVE_CHAT/HIDEBOTH/kept', 'the font, the edit box\'s place, the backdrop and every other mover untouched')
+	local keys = 0
+	for _ in pairs(chat) do keys = keys + 1 end
+	expectEq(keys, 6, 'three keys written, nothing else')
+	-- a character on an older build gets it with its next character layer (before ElvUI builds the chat)
+	local older = T.DeepCopy(profile())
+	older.chat.panelWidth, older.chat.panelHeight, older.chat.tabSelector, older.movers.LeftChatMover = 430, 140, nil, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,42'
+	T.ApplyCharacterLayer(older, P.elvuiProfile, ns.Restore:Fonts(), ns.Restore:LayerOptions())
+	expectEq(older.chat.panelWidth .. 'x' .. older.chat.panelHeight .. '/' .. tostring(older.chat.tabSelector), '474x159/NONE', 'the character layer carries the panel\'s size and the tab marks')
+	expectEq(older.movers.LeftChatMover, T.ChatMover(compat.barHeight), 'and its place')
+	expectEq(ns.Restore:LayerOptions().chatX, 9, 'the layer\'s signature changes with the new place: written once at the next login')
+	-- the profile this character runs has it
+	expectEq(profile().chat.panelWidth .. 'x' .. profile().chat.panelHeight .. '/' .. tostring(profile().chat.tabSelector), '474x159/NONE', 'in the Banzai profile')
+	expectEq(profile().chat.editBoxPosition, P.elvuiProfile.chat.editBoxPosition, 'the edit box where the profile always had it')
+end)
+
+test('1.5.3 Details meters: 224.655 x 128 each around the 15-unit gutter, 4 from the side stalks and 12 under the top stalk of the unchanged frame; ten rows where there were nine - the rows themselves unchanged, the first 4 under the window\'s top; DAMAGE and HEALING identical', function()
+	local L, S = T.DETAILS_LAYOUT, T.DETAILS_STYLE
+	local left, right = HK_DetailsWindow, HK_DetailsWindow2
+	expectEq(L, T.DETAILS_LAYOUT_FILL, 'the filled numbers are the ones in use')
+	expectEq(L.width .. '/' .. L.height .. '/' .. L.gap .. '/' .. L.right .. '/' .. L.bottom, '224.655/128/15/-29.995/42', 'the meters')
+	expectEq(T.DETAILS_LAYOUT_152.width .. '/' .. T.DETAILS_LAYOUT_152.height .. '/' .. T.DETAILS_LAYOUT_152.right, '207.5/124/-47.15', '1.5.2\'s numbers kept beside them (WoW Forever)')
+	-- the Details frame (Banzai Art, unchanged): 493.31 x 161, its centre 262.15 from the screen's right edge and 70 over the windows' bottom
+	local inside, centre = 493.31 - 2 * 10.5, -262.15
+	expectNear(2 * L.width + L.gap + 2 * 4, inside, 'the two meters, the gutter and 4 each side are the room between the side stalks')
+	expectNear(L.right - (centre + inside / 2), -4, 'the right meter 4 inside the right stalk')
+	expectNear((L.right - 2 * L.width - L.gap) - (centre - inside / 2), 4, 'the left meter 4 inside the left stalk')
+	expectNear((L.right - L.width - L.gap / 2), centre, 'the gutter\'s middle on the frame\'s centre (the divider)')
+	expectNear((161 - 2 * 10.5) - L.height, 12, '12 under the top stalk (the titles\' lower half, and Details\' own menu icons on hover)')
+	ns.Restore:LayoutDetails()
+	for _, w in ipairs({ left, right }) do
+		expectNear(w.posicao.normal.w * w.window_scale, L.width, 'width on screen')
+		expectNear(w.posicao.normal.h * w.window_scale, L.height, 'height on screen')
+		expectEq(w.libwindow.y, L.bottom + (compat.barHeight - T.BAR_HEIGHT), 'on the bottom stalk\'s inner edge')
+		expectEq(w.libwindow.point, 'BOTTOMRIGHT', 'anchored from the screen\'s corner')
+	end
+	expectNear(left.posicao.normal.w, right.posicao.normal.w, 'DAMAGE and HEALING equally wide')
+	expectNear(left.posicao.normal.h, right.posicao.normal.h, 'and equally tall')
+	expectEq(left.libwindow.y, right.libwindow.y, 'the same bottom edge')
+	expectNear(right.libwindow.x - L.width - left.libwindow.x, L.gap, 'the gutter between them')
+	-- the rows: bar 5, 12 between, text 13 as before; the first row 4 under the window top (was 8)
+	expectEq(S.rowHeight .. '/' .. S.rowGap .. '/' .. S.rowFontSize, '5/12/13', 'the rows themselves are 1.5.2\'s (not enlarged, not shrunk)')
+	expectEq(S.rowOffset, T.DETAILS_ROW_OFFSET_FILL, 'the first row\'s place')
+	expectEq(T.DETAILS_ROW_OFFSET_152 .. '/' .. T.DETAILS_ROW_OFFSET_FILL, '-8/-4', '8 before, 4 now')
+	local pitch = S.rowHeight + S.rowGap
+	local fit = function(h) return math.floor(h / 0.75 / pitch) end -- Details: floor(window height / (bar + space)) at window scale 0.75
+	expectEq(fit(124) .. ' -> ' .. fit(L.height), '9 -> 10', 'one more row')
+	local lastTextEnd = -S.rowOffset + (fit(L.height) - 1) * pitch + S.rowHeight + (S.rowFontSize - S.rowHeight) / 2
+	expect(lastTextEnd <= L.height / 0.75, 'the tenth row\'s text ends inside the window (' .. lastTextEnd .. ' of ' .. L.height / 0.75 .. ')')
+	local firstTextTop = 12 + (-S.rowOffset - (S.rowFontSize - S.rowHeight) / 2) * 0.75
+	expect(firstTextTop > 7.58 + 1, 'the first row\'s text starts clear of the titles\' accent lines (' .. firstTextTop .. ' under the stalk; they end at 7.58)')
+	-- both windows styled alike, CURRENT and COMPACT; COMPACT's own offset untouched
+	for _, style in ipairs({ 'CURRENT', 'COMPACT' }) do
+		local fresh = T.DeepCopy(P.detailsProfile)
+		T.StyleDetailsWindows(fresh, true, nil, style, T.DETAILS_ICONS.discs)
+		local a, b = fresh.instances[1].row_info, fresh.instances[2].row_info
+		expectEq(a.row_offsets.top, style == 'CURRENT' and -4 or T.DETAILS_COMPACT.rowOffset, style .. ': the first row\'s place')
+		expectEq(T.Serialize(a.row_offsets) .. a.height .. a.space.between, T.Serialize(b.row_offsets) .. b.height .. b.space.between, style .. ': DAMAGE and HEALING rows identical')
+		expectEq(a.row_offsets.left .. '/' .. a.row_offsets.right .. '/' .. a.space.left .. '/' .. a.space.right, '0/0/0/0', style .. ': the bars run the window\'s whole width')
+	end
+	expectEq(T.DETAILS_COMPACT.rowOffset, -15, 'BANZAI COMPACT keeps its own offset')
+	-- the meter bar material is not this milestone's: the profile's row textures are what 1.5.2 wrote
+	local row = Details.profiles[NAME].instances[1].row_info
+	expectEq(row.texture .. '/' .. row.texture_background .. '/' .. row.overlay_texture, 'Banzai/Banzai/Banzai', 'the meter bars\' texture untouched')
+end)
+
+test('1.5.3 update from 1.5.2: at the first login the two meters are placed again and their rows start 4 under the window top - on Banzai\'s Details profile only, geometry and Details\' own row settings only, no reload', function()
+	local R = ns.Restore
+	local L = T.DETAILS_LAYOUT
+	local left, right = HK_DetailsWindow, HK_DetailsWindow2
+	local r = record()
+	local d = Details.profiles[NAME]
+	local function old() -- 1.5.2's windows and rows
+		for _, w in ipairs({ left, right }) do
+			w.posicao.normal.w, w.posicao.normal.h = 207.5 / 0.75, 124 / 0.75
+			w.row_info = T.DeepCopy(d.instances[1].row_info)
+			w.row_info.row_offsets.top = -8
+		end
+		left.libwindow.x, right.libwindow.x = -47.15 - 207.5 - 15, -47.15
+		for i = 1, 2 do d.instances[i].row_info.row_offsets.top = -8 end
+	end
+	old()
+	right.display = { 7, 3, 1 }
+	r.applied.version = '1.5.2'
+	HK_PRINTS, HK_POPUPS = {}, {}
+	local bars = (left.barSettingsCalls or 0)
+	expectEq(R:OnLogin(), true, 'the update runs at login')
+	expectEq(r.applied.version, '1.5.3', 'version recorded')
+	expectEq(#HK_POPUPS, 0, 'no reload needed')
+	expectNear(left.posicao.normal.w, L.width / 0.75, 'left meter wider')
+	expectNear(right.posicao.normal.h, L.height / 0.75, 'right meter taller')
+	expectEq(right.libwindow.x, L.right, 'the right meter 4 inside the right stalk')
+	expectEq(left.libwindow.x, L.right - L.width - L.gap, 'the left meter across the gutter')
+	expectEq(d.instances[1].row_info.row_offsets.top .. '/' .. d.instances[2].row_info.row_offsets.top, '-4/-4', 'the profile\'s rows start 4 under the window top')
+	expectEq(left.row_info.row_offsets.top .. '/' .. right.row_info.row_offsets.top, '-4/-4', 'and the two live windows\'')
+	expect((left.barSettingsCalls or 0) > bars, 'through Details\' own bar settings call')
+	expectEq(table.concat(right.display, ','), '7,3,1', 'what a window shows is not touched')
+	expectEq(R:OnLogin(), nil, 'once')
+	-- another Details profile: nothing of it is moved or restyled
+	old()
+	r.applied.version = '1.5.2'
+	Details.current = 'DarrenUI'
+	R:OnLogin()
+	expectEq(left.libwindow.x, -47.15 - 207.5 - 15, 'another Details profile: nothing moved')
+	expectEq(left.row_info.row_offsets.top, -8, 'nothing restyled')
+	Details.current = NAME
+	R:LayoutDetails(true)
+	R:ApplyDetailsStyle()
+	expectEq(left.row_info.row_offsets.top, -4, 'Banzai\'s profile: back in step')
+end)
+
+test('1.5.3 /banzai header: Banzai Art\'s read-only report of the header labels, named with the version; listed in /banzai status', function()
+	local art = BanzaiCompat
+	art.Header = { Report = function() return { 'CHAT title: Shojumaru-Regular.ttf, size 23, OUTLINE; its labels: size 11.5 (50 %)', '  tab General: selected, opacity 1.00' } end }
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('header')
+	local text = table.concat(HK_PRINTS, '\n')
+	expect(string.find(text, 'BANZAI 1.5.3 (release) header labels - read only, nothing is changed.', 1, true), 'the headline: ' .. text)
+	expect(string.find(text, 'CHAT title: Shojumaru-Regular.ttf, size 23', 1, true), 'Banzai Art\'s lines')
+	expect(string.find(text, 'tab General: selected, opacity 1.00', 1, true), 'every line of it')
+	art.Header = { Report = function() error('boom') end }
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('header')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'the report failed', 1, true), 'a failing report is said, not raised')
+	art.Header = nil
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('header')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'Banzai Art is not loaded.', 1, true), 'without Banzai Art')
+	HK_PRINTS = {}
+	SlashCmdList.BANZAI('status')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), '| frames | header | apply', 1, true), 'listed among the commands')
+	expect(string.find(table.concat(HK_PRINTS, '\n'), 'BANZAI 1.5.3 (release;', 1, true), '/banzai status names the version')
 end)
 
 ---------------------------------------------------------------------------

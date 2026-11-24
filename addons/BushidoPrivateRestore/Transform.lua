@@ -1002,6 +1002,17 @@ T.ACTION_MOVERS = { 'ElvAB_1', 'ElvAB_3', 'ElvAB_5', 'ElvAB_6' }
 -- 1.2.0: the whole composition flush with the left screen edge, the panel at x 31
 -- (Banzai Art Compat.CHAT: the frame at -0.655, its left stalk on the edge).
 T.CHAT = { x = 31, inset = 10, width = 430, height = 140 }
+-- 1.5.3 CHAT + DETAILS FULL-CHASSIS LAYOUT (Retail / Midnight first; WoW Forever keeps the numbers above until its
+-- port). The BANZAI CHAT frame is not touched: ElvUI's chat panel inside it grows, so ElvUI itself gives the chat
+-- text the room (its text sits 5 inside the panel and is 10 narrower and 32 lower than it: 464 x 127 at x 14,
+-- bottom = bar + 14 - 4.155 from the side stalks, 4 above the bottom stalk, 9 under the top one, clear of the CHAT
+-- title). ElvUI keeps 32 above the text for its tabs: that strip now lies on the top stalk, where Banzai Art puts
+-- the tabs (Header.lua). tabSelector NONE: ElvUI's "> <" marks around the selected tab's name go - the selected
+-- tab is the opaque one. Both are ElvUI's own settings in Banzai's own profile.
+T.CHAT_152 = T.CHAT
+T.CHAT_FILL = { x = 9, inset = 9, width = 474, height = 159, tabSelector = 'NONE' }
+function T.Filled() return not (ns.Flavor and ns.Flavor.IsForever()) end
+if T.Filled() then T.CHAT = T.CHAT_FILL end
 
 function T.ShiftMover(value, dx, dy)
 	local point, anchor, relative, x, y = string.match(value or '', '^([^,]+),([^,]+),([^,]+),([^,]+),([^,]+)$')
@@ -1045,6 +1056,16 @@ end
 
 function T.ChatMover(barHeight)
 	return string.format('BOTTOMLEFT,UIParent,BOTTOMLEFT,%d,%d', T.CHAT.x, (barHeight or T.BAR_HEIGHT) + T.CHAT.inset)
+end
+
+-- 1.5.3: the chat panel's size, place and tab marks together (written with every character layer, so a character
+-- on an older build gets them at its next login, before ElvUI builds the chat)
+function T.ApplyChatLayout(p, barHeight)
+	local chat = Ensure(p, 'chat')
+	chat.panelWidth, chat.panelHeight = T.CHAT.width, T.CHAT.height
+	if T.CHAT.tabSelector then chat.tabSelector = T.CHAT.tabSelector end
+	Ensure(p, 'movers').LeftChatMover = T.ChatMover(barHeight)
+	return chat
 end
 
 -- 1.2.0 action-button style: SQUARE (Banzai square, default) | CIRCLE (Banzai
@@ -1486,6 +1507,7 @@ function T.ApplyCharacterLayer(p, historical, fonts, opts)
 	T.SetCircleButtons(p, style, historical, fonts.small, opts.actionLook)
 	T.ApplyActionMovers(p, historical, opts.barHeight, style ~= 'ELVUI', opts.actionLook)
 	Ensure(p, 'movers').LeftChatMover = T.ChatMover(opts.barHeight)
+	T.ApplyChatLayout(p, opts.barHeight) -- 1.5.3: with the panel's size and the tab marks
 	T.ApplyRoleLayout(p, opts.role or 'DPS', historical, opts.roles, opts.roleContext)
 	T.ApplyFrameStyle(p, historical, fonts, opts) -- 1.3.0: BANZAI SPLIT over the classic layer (nothing for BANZAI CLASSIC)
 	return p
@@ -1765,6 +1787,11 @@ end
 -- parallelogram frame, 47.15 from the right edge. 1.3.6: a real centre gutter -
 -- each window 207.5 wide (was 212), 15 between them (was 6), the outer edges kept.
 T.DETAILS_LAYOUT = { width = 207.5, height = 124, gap = 15, right = -47.15, bottom = 42 }
+-- 1.5.3 (Retail / Midnight first): the meters fill the frame - 224.655 x 128 each around the same 15-unit gutter,
+-- 4 from the side stalks (the same numbers as BanzaiCompat.DETAILS_FILL, where the arithmetic is)
+T.DETAILS_LAYOUT_152 = T.DETAILS_LAYOUT
+T.DETAILS_LAYOUT_FILL = { width = 224.655, height = 128, gap = 15, right = -29.995, bottom = 42 }
+if T.Filled() then T.DETAILS_LAYOUT = T.DETAILS_LAYOUT_FILL end
 T.DETAILS_TEXT_SIZE = 10 -- meter rows and titles (Bushido used 8 at window scale 0.75)
 
 -- Details windows: big titles in the Banzai display font (DAMAGE red family,
@@ -1795,6 +1822,12 @@ T.DETAILS_STYLE = {
 	ink = { 0.96, 0.95, 0.92, 1 },
 	text = { 1, 1, 1, 1 },
 }
+-- 1.5.3 (Retail / Midnight first): the first row 4 under the window's top edge (was 8). The window's top is 12
+-- under the top stalk now (was 16), so the first row's text starts 12 under the stalk - clear of the titles'
+-- accent lines (7.6) - and ten rows of 17 fit in the 170.7 of the window (nine in 165.3 before): row 10's bar ends
+-- at 162, its text at 166. The rows themselves (bar 5, text 13, 12 between) are not changed.
+T.DETAILS_ROW_OFFSET_152, T.DETAILS_ROW_OFFSET_FILL = -8, -4
+if T.Filled() then T.DETAILS_STYLE.rowOffset = T.DETAILS_ROW_OFFSET_FILL end
 
 -- 1.1.0: the row text colour for the panel background (Details' own
 -- row_info.fixed_text_color, which every row text without a colour of its own inherits)

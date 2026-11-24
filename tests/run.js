@@ -50,6 +50,8 @@ const suites = [
   // 1.5.0-dev3: the Forever chat adapter and the window skins (Banzai Art on WoW Forever), and the same files on Retail
   { file: 'test_forever_skins.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat'), flavor: 'forever' },
   { file: 'test_retail_skins.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat') },
+  // 1.5.3: the CHAT + DETAILS full-chassis layout and the header labels (Banzai Art on Retail / Midnight)
+  { file: 'test_header.lua', addon: 'BushidoPrivateCompat', files: tocFiles('BushidoPrivateCompat') },
 ];
 
 let passed = 0;

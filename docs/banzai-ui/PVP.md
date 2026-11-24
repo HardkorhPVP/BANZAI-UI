@@ -37,7 +37,7 @@ Sample frames and bars labelled *SAMPLE DATA*, with synthetic states: a role sel
 
 ## WoW Forever
 
-PvP presentation is implemented where WoW Forever supports it and validated offline; dedicated live PvP / Arena / Battleground validation is deferred. What that client has no data for is left out rather than shown as a made-up value: no conquest, no separate PvP item level, arena trinket state shown as unknown. Your own cooldown bars show nothing there yet (no spell list is verified for that client; Retail's is not reused). See [WOW-FOREVER.md](WOW-FOREVER.md).
+PvP presentation is implemented where WoW Forever supports it. BANZAI UI 1.5.2 was validated live on WoW Forever 1.60.1, including the PvP / Arena validation earlier releases listed as deferred. What that client has no data for is left out rather than shown as a made-up value: no conquest, no separate PvP item level, arena trinket state shown as unknown. Your own cooldown bars show nothing there yet (no spell list is verified for that client; Retail's is not reused). See [WOW-FOREVER.md](WOW-FOREVER.md).
 
 ## Not changed
 

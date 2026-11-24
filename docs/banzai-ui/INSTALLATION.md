@@ -1,6 +1,6 @@
 # Installing BANZAI UI
 
-BANZAI UI 1.5.2 is for **World of Warcraft Retail 12.1.5** (Interface 120105) and **WoW Forever 1.60.1** (Interface 16001). The same zip installs in either client; WoW Forever specifics are in [WOW-FOREVER.md](WOW-FOREVER.md).
+BANZAI UI 1.5.3 is for **World of Warcraft Retail 12.1.5** (Interface 120105) and **WoW Forever 1.60.1** (Interface 16001). The same zip installs in either client; WoW Forever specifics are in [WOW-FOREVER.md](WOW-FOREVER.md).
 
 ## What you need first
 

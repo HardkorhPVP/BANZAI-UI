@@ -134,9 +134,36 @@ Compat.DETAILS = {
 	edge = 16,
 	frameWidth = 493.31, frameHeight = 161, centerX = -215, centerY = 70,
 }
+-- 1.5.3 CHAT + DETAILS FULL-CHASSIS LAYOUT (Retail / Midnight first; WoW Forever keeps the numbers above until its
+-- port). The bamboo frames do not move or change size: only what is inside them grows to the stalks.
+--   gutter      between a stalk's inner edge and the content, left and right (chat: below it too)
+--   chatTop     under the top stalk to the chat text: clear of the CHAT title's lower half and its accent line
+--   detailsTop  under the top stalk to the meters' top edge: the titles' lower half, and the room Details' own
+--               menu icons take above a window when the pointer is on it (they sat in the same band before)
+-- The meters reach the bottom stalk's inner edge as before: Details ends its rows a few units above its window's
+-- bottom edge by itself (10 rows of 17 in 170.7), which is the bottom gutter the eye sees.
+-- DETAILS: two windows of 224.655 x 128 (were 207.5 x 124) around the unchanged 15-unit centre gutter, the right
+-- one 29.995 from the screen's right edge (was 47.15): 2 x 224.655 + 15 = 464.31 = the 472.31 between the side
+-- stalks less 2 x 4. The frame's centre is where it was (-29.995 - 232.155 = -47.15 - 215 = -262.15; 42 + 70).
+-- CHAT_CONTENT: where ElvUI puts the chat text for BushidoPrivateRestore's panel (T.CHAT: x 9, 474 x 159, bottom =
+-- bar + 9): 5 inside the panel, 10 narrower and 32 lower than it - x 14, 464 x 127, bottom = bar + 14.
+Compat.FILL = { gutter = 4, chatTop = 9, detailsTop = 12 }
+Compat.DETAILS_FILL = {
+	width = 224.655, height = 128, gap = 15, title = 12, right = -29.995, bottom = 42,
+	edge = 16,
+	frameWidth = 493.31, frameHeight = 161, centerX = -232.155, centerY = 70,
+}
+Compat.CHAT_CONTENT = { x = 14, width = 464, height = 127, bottom = 14 }
+Compat.DETAILS_152 = Compat.DETAILS
+function Compat.Filled() return not (ns.Flavor and ns.Flavor.IsForever()) end
+if Compat.Filled() then Compat.DETAILS = Compat.DETAILS_FILL end
 -- 1.2.0: flush with the left screen edge - the left stalk's outer edge on it (-0.155: the ElvUI chat panel keeps a
 -- whole-unit x, 31 = BushidoPrivateRestore's T.CHAT.x); same width, height and bottom as before (1.1.x: left 15.345, x 47)
 Compat.CHAT = { left = -0.655, contentX = 31, width = 493.31, height = 161 }
+-- 1.5.3: the CHAT frame's top stalk (and the two rope ties on it) sits `drop` units lower than a frame's top
+-- stalk does - inside the frame's unchanged outer size and place. The chat tabs stand on it (Header.lua); the CHAT
+-- title, the side and bottom stalks, the background and the chat text keep their place.
+Compat.CHAT_TOP = { drop = 2 }
 Compat.MINIMAP = { zoneGap = 5, zoneSize = 16 } -- 1.1.0: the frame hugs the map (outer + stalk around it); the zone name this far above the top stalk (1.3.1: in the Banzai display font)
 -- 1.2.0 BUFFS panel: around ElvUI's buff icons (its header, BuffsMover), `pad` inside the stalks on top and the
 -- sides, `padBottom` below the last row: ElvUI draws each buff's duration under its icon (cooldown text BOTTOM, -3,
@@ -170,6 +197,9 @@ Compat.DETAILS_TITLES = {
 -- size (display font), inset from the window edge, room left of the top-right
 -- rope tie, backing padding, accent line thickness / gap
 Compat.DETAILS_TITLE = { size = 22, inset = 4, bamboo = 6, pad = 7, fade = 9, accent = 2, gap = 2 }
+-- 1.5.3: the titles stay where 1.3.6 put them - 215 either side of the frame's centre (half of the two 207.5
+-- windows and their gutter) - whatever the windows' width is now
+Compat.DETAILS_TITLE.half = 215
 -- 0.8.0 the chat frame's title: same font, size, backing and accent, centred, green -> red
 -- 0.9.0: darker and more restrained than DAMAGE / HEALING (a dark green into a dark red)
 Compat.CHAT_TITLE = { text = 'CHAT', bright = { 0.20, 0.64, 0.32 }, deep = { 0.70, 0.16, 0.16 } }
@@ -330,7 +360,8 @@ local function LayoutBamboo(holder)
 	local P = Compat.PANEL
 	local W, H = holder.bw, holder.bh
 	local d = StalkDiameter()
-	local key = d .. ':' .. W .. ':' .. H
+	local drop = holder.topDrop or 0
+	local key = d .. ':' .. W .. ':' .. H .. ':' .. drop
 	if holder.layoutKey == key then return end -- nothing changed: the pieces stay as they are
 	holder.layoutKey = key
 	local half = d / 2
@@ -342,7 +373,7 @@ local function LayoutBamboo(holder)
 	local flush = type(holder.flushLeft) == 'number'
 	local extLeft = flush and 0 or P.ext
 	local startLeft = flush and math.max(0, -holder.flushLeft) or -P.ext * d -- flush: the stalks start on the screen edge
-	local axis = { top = P.outer + half, bottom = H - P.outer - half, left = P.outer + half, right = W - P.outer - half }
+	local axis = { top = P.outer + half + drop, bottom = H - P.outer - half, left = P.outer + half, right = W - P.outer - half }
 	holder.axis, holder.stalkDiameter = axis, d
 	-- (name, along the holder's x or y, at, from, to, the end with the cut tip, draw order: bottom under the sides under the top)
 	local stalks = {
@@ -1016,14 +1047,23 @@ function Compat:LayoutDetailsTitle(t)
 	elseif t.side == 'CENTER' then -- the middle of the top stalk
 		t:SetPoint('CENTER', chassis, 'TOPLEFT', center, -line)
 	elseif t.side == 'LEFT' then
-		local left = center + D.centerX + T.inset - T.pad -- window 1's left edge (two windows + gap = 2 x 215)
+		local left = center - T.half + T.inset - T.pad -- window 1's left edge as it was (two windows + gap = 2 x 215)
 		t:SetPoint('LEFT', chassis, 'TOPLEFT', left, -line)
 	else
-		local right = center - D.centerX - T.inset + T.pad -- window 2's right edge
+		local right = center + T.half - T.inset + T.pad -- window 2's right edge as it was
 		-- clear of the top-right rope tie
 		local x = chassis.bw - self.PANEL.outer - d / 2 - self.PANEL.tie * d / 2 - T.bamboo + T.pad
 		t:SetPoint('RIGHT', chassis, 'TOPLEFT', math.min(right, x), -line)
 	end
+	-- 1.5.3: the title's left and right ends, from the frame's left edge (the header labels stand clear of them)
+	if t.side == 'LEFT' then
+		t.x0 = center - T.half + T.inset - T.pad
+	elseif t.side == 'RIGHT' then
+		t.x0 = math.min(center + T.half - T.inset + T.pad, chassis.bw - self.PANEL.outer - d / 2 - self.PANEL.tie * d / 2 - T.bamboo + T.pad) - width
+	else
+		t.x0 = center - width / 2
+	end
+	t.x1 = t.x0 + width
 	-- backing: soft ends, solid middle (alpha in the gradient colours)
 	local glass = { 0.01, 0.025, 0.018 }
 	local h = T.size * 0.78
@@ -1116,6 +1156,7 @@ function Compat:BuildChat()
 	frame:SetFrameLevel(0)
 	frame.artKind = 'chat'
 	frame.flushLeft = C.left -- 1.2.0: on the left screen edge
+	if Compat.Filled() then frame.topDrop = self.CHAT_TOP.drop end -- 1.5.3 (Midnight first, with the tabs on the stalk)
 	BambooFrame(frame, false, true)
 	self.chatFrame = frame
 	-- 0.8.0: CHAT on the top border, the DAMAGE / HEALING title treatment
@@ -1561,7 +1602,15 @@ function Compat:PlaceDetails(active)
 	if loaded then base, hasApi = DetailsWindow(2) end
 	frame:ClearAllPoints()
 	if base then
-		frame:SetPoint('CENTER', base, 'BOTTOMRIGHT', D.centerX, D.centerY)
+		-- 1.5.3: the frame keeps its place on screen whichever width the right window has at this moment - a window
+		-- still 207.5 wide (the first seconds after the update, another Details profile, a login in combat) is the
+		-- 1.5.2 composition, 215 from the frame's centre; the filled one is 232.155 from it
+		local centerX = D.centerX
+		local old = self.DETAILS_152
+		local _, _, width = Rect(base)
+		if old and old ~= D and width and math.abs(width - old.width) < math.abs(width - D.width) then centerX = old.centerX end
+		frame.followX = centerX
+		frame:SetPoint('CENTER', base, 'BOTTOMRIGHT', centerX, D.centerY)
 	else
 		local bottom = (Theme:DB().barHeight or 32) + 10
 		frame:SetPoint('CENTER', UIParent, 'BOTTOMRIGHT', D.right + D.centerX, bottom + D.centerY)
@@ -1633,7 +1682,7 @@ function Compat:Refresh()
 	-- own: a failure in one never reaches the HUD above (the reason is kept for /banzai forever).
 	-- (not on a group / arena roster change: that rebuild is about unit frames only - the chat windows and the
 	-- skinned windows have nothing to do with who joined, and a window that shows is looked at then anyway)
-	for _, name in ipairs({ 'ChatLayout', 'Skins' }) do
+	for _, name in ipairs({ 'ChatLayout', 'Header', 'Skins' }) do -- 1.5.3: Header - the chat tabs on the CHAT frame's top stalk
 		local module = ns[name]
 		if module and module.Refresh and not self.rosterBuild then
 			local ok, err = pcall(module.Refresh, module)
@@ -1693,6 +1742,8 @@ frame:SetScript('OnEvent', function(_, event)
 			Compat:UpdateMinimapMask()
 			-- 1.5.0-dev3: once more after ElvUI has placed its chat windows and the meters are in place
 			if ns.ChatLayout then pcall(ns.ChatLayout.Refresh, ns.ChatLayout, 'login') end
+			-- 1.5.3: and the chat tabs on the CHAT frame's top stalk, now that ElvUI has its left chat window
+			if ns.Header then pcall(ns.Header.Refresh, ns.Header, 'login') end
 		end)
 		C_Timer.After(10, function() Compat:PlaceDetails(Active()) end)
 	elseif event == 'PLAYER_REGEN_DISABLED' then

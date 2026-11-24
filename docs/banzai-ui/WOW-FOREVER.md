@@ -81,9 +81,10 @@ changed.
 
 - **Healer layout:** automatic healer-role adaptation is implemented for WoW Forever but has not yet completed
   dedicated live healer validation. The manual choice (`/banzai role healer`) is always available.
-- **PvP:** battleground, arena and other PvP presentation is implemented where WoW Forever supports it and
-  validated offline; dedicated live PvP / Arena / Battleground validation is deferred. Arena trinket state is
-  shown as unknown, and no PvP item level is shown.
+- **PvP:** battleground, arena and other PvP presentation is implemented where WoW Forever supports it.
+  BANZAI UI 1.5.2 was validated live on WoW Forever 1.60.1, including the PvP / Arena validation earlier
+  releases listed as deferred. By design, arena trinket state is shown as unknown and no PvP item level is
+  shown: that client has no verified data for either.
 - **Own cooldown bars:** the offensive / defensive cooldown bars show nothing on WoW Forever yet - no spell list
   has been verified for this client, and Retail's is not reused.
 - **Window skins** depend on the other addon's own state: Blizzard windows are skinned where ElvUI's skin for

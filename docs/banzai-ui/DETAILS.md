@@ -1,6 +1,6 @@
 # Details!
 
-With Details! installed, BANZAI shows **DAMAGE | HEALING** side by side in the lower right of the screen inside one bamboo frame, the titles on its top border (red DAMAGE, green HEALING), with a real centre gutter between the two meters. Details' own profile and window API are used; Details' files are not touched.
+With Details! installed, BANZAI shows **DAMAGE | HEALING** side by side in the lower right of the screen inside one bamboo frame, the titles on its top border (red DAMAGE, green HEALING), with a real centre gutter between the two meters. Details' own profile and window API are used; Details' files are not touched. On Retail / Midnight (1.5.3) the two meters fill the inside of the frame and show ten rows each.
 
 Page: **BANZAI > LAYOUT > CHAT / DETAILS / MINIMAP / TRACKER > DETAILS**.
 

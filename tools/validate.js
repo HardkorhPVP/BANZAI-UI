@@ -1492,9 +1492,11 @@ check('installed AddOns folder found', fs.existsSync(ADDONS));
     fs.mkdirSync(path.dirname(oldT), { recursive: true });
     fs.writeFileSync(oldT, git('addons/BushidoPrivateRestore/Transform.lua', 'banzai-1.3.0') || '');
     const prog = `
-      local function load(file) local ns = {} assert(loadfile(file))('x', ns) return ns end
+      -- 1.5.3: the current Transform is loaded with its 1.5.2 geometry (the client flag WoW Forever sets): what these 1.3.1
+      -- checks compare is everything but the 1.5.3 chat / Details fill, which has its own tests (tests/test_header.lua)
+      local function load(file, unfilled) local ns = {} if unfilled then ns.Flavor = { IsForever = function() return true end } end assert(loadfile(file))('x', ns) return ns end
       local P = load(${q(path.join(DIST, 'BushidoPrivateRestore', 'Payloads.lua'))}).Payloads
-      local Old, New = load(${q(oldT)}).Transform, load(${q(path.join(DIST, 'BushidoPrivateRestore', 'Transform.lua'))}).Transform
+      local Old, New = load(${q(oldT)}).Transform, load(${q(path.join(DIST, 'BushidoPrivateRestore', 'Transform.lua'))}, true).Transform
       local fonts = { display = 'GasoekOne', small = 'Rubik-Bold' }
       local opts = { healthInside = true, healthPercent = true, barHeight = 32, smoothBars = true, actionStyle = 'SQUARE', frameWidth = 0.5, totScale = 0.72, identityCircles = true, roleIcons = true, role = 'DPS', roleContext = 'world', tooltipTheme = 'BANZAI', afk = true }
       local base = New.TransformProfile(P.elvuiProfile, 'GasoekOne', nil, 'Rubik-Bold', opts)

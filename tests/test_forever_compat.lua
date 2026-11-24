@@ -40,9 +40,9 @@ end
 test('Banzai Art loads on WoW Forever and knows its client', function()
 	expectEq(Flavor.Id(), 'FOREVER', 'client')
 	expectEq(BanzaiCompat.Flavor, Flavor, 'the adapter is reachable through BanzaiCompat')
-	expectEq(Theme.VERSION, '1.5.2', 'version')
+	expectEq(Theme.VERSION, '1.5.3', 'version')
 	expectEq(Theme.CHANNEL, 'release', 'channel')
-	expectEq(BanzaiCompat.VERSION, '1.5.2', 'Banzai Art version')
+	expectEq(BanzaiCompat.VERSION, '1.5.3', 'Banzai Art version')
 	expectEq(GetSpecialization, nil, 'no specialization globals, as in the client')
 	expectEq(C_PetBattles, nil, 'no pet battles')
 end)
@@ -223,4 +223,35 @@ end)
 test('the AFK screen and the previews carry the release channel (no proof label)', function()
 	expectEq(Theme.CHANNEL, 'release', 'channel')
 	expect(Flavor.Has('petBattles') == false, 'no pet battle check is needed on WoW Forever')
+end)
+
+-- 1.5.3 is Retail / Midnight first: on WoW Forever Banzai Art keeps 1.5.2's Details geometry and shows no header labels
+test('1.5.3 Midnight first: on WoW Forever the Details frame\'s numbers are 1.5.2\'s and the header labels do nothing - no label, no hook, no listener, the CHAT frame\'s top stalk where it was', function()
+	local C = BanzaiCompat
+	local Header = ns.Header
+	expectEq(C.Filled(), false, 'the filled layout is not used on WoW Forever')
+	expectEq(C.DETAILS, C.DETAILS_152, 'the Details numbers in use are 1.5.2\'s')
+	expectEq(C.DETAILS.width .. '/' .. C.DETAILS.height .. '/' .. C.DETAILS.centerX .. '/' .. C.DETAILS.right, '207.5/124/-215/-47.15', 'the meters and the frame\'s place')
+	expectEq(Header.Available(), false, 'the header labels are not used here yet')
+	-- everything the labels would need is there: they still do nothing
+	FCFDock_UpdateTabs = function() end
+	local listeners = 0
+	Details.CreateEventListener = function() listeners = listeners + 1 return { RegisterEvent = function() return true end } end
+	local hooks = #HK_HOOKS
+	C:Refresh()
+	Header:Refresh('forever')
+	expectEq(Header:ChatOwned(), false, 'the chat tabs are not presented')
+	expectEq(#HK_HOOKS, hooks, 'no hook')
+	expectEq(listeners, 0, 'no Details listener')
+	expectEq(next(Header.chat.state), nil, 'no tab taken')
+	expectEq(Header.details, nil, 'no Details label of any kind')
+	-- 1.5.3: the CHAT frame's top stalk is lowered on Midnight only
+	expectEq(C.chatFrame.topDrop, nil, 'no drop asked for on WoW Forever')
+	expectNear(C.chatFrame.axis.top, C.PANEL.outer + C.StalkDiameter() / 2, 'the CHAT frame\'s top stalk where 1.5.2 has it')
+	expectEq(Header:Report()[1], 'header labels: not used on this client yet', 'and the report says so')
+	FCFDock_UpdateTabs, Details.CreateEventListener = nil, nil
+	-- the DAMAGE / HEALING titles are where 1.5.2 had them on this client too
+	local TT = C.DETAILS_TITLE
+	expectEq(TT.half, 215, 'the titles\' place does not depend on the meters\' width')
+	expectEq(-C.DETAILS_152.centerX, TT.half, 'it is 1.5.2\'s')
 end)

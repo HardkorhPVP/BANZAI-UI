@@ -188,7 +188,7 @@ test('prerequisites on WoW Forever: every one answers; each is checked against w
 	for _, item in ipairs(pre.items) do states[#states + 1] = item.name .. '=' .. item.state end
 	expectEq(table.concat(states, '; '), 'ElvUI=READY; ElvUI Libraries=READY; ElvUI Options=ON DEMAND; Banzai Art=READY; JiberishMedia=READY; mMediaTag & Tools=READY; Eltruism=READY; Jiberish Icons=READY; Details=READY; mMT Media Pack=READY', 'every component')
 	local lines = table.concat(ns.Restore:PreflightLines(), '\n')
-	expect(string.find(lines, 'BANZAI 1.5.2 (release) on WoW Forever 1.60.1 (build 70862, Interface 16001)', 1, true), 'headline')
+	expect(string.find(lines, 'BANZAI 1.5.3 (release) on WoW Forever 1.60.1 (build 70862, Interface 16001)', 1, true), 'headline')
 	expect(string.find(lines, 'Every required component is ready.', 1, true), 'ready')
 	local text = HK_Plain(ns.Options.ClientText())
 	expect(string.find(text, 'CLIENT   WoW Forever 1.60.1', 1, true), 'settings: client')
@@ -265,7 +265,7 @@ test('APPLY BANZAI on WoW Forever: the profile is written, adapted to the client
 	expectEq(ok, true, 'applied: ' .. prints())
 	expectEq(E.data:GetCurrentProfile(), NAME, 'the Banzai profile is active')
 	expectEq(HK_POPUPS[#HK_POPUPS], 'BANZAI_RELOAD', 'reload prompt')
-	expectEq(record().applied.version, '1.5.2', 'version recorded')
+	expectEq(record().applied.version, '1.5.3', 'version recorded')
 	expectEq(record().layer, T.LAYER, 'layer recorded')
 	-- the client adapter: the pet battle condition is gone from every bar
 	expectEq(profile().actionbar.bar1.visibility, 'show\n', 'bar 1 (the historical line break is not the adapter\'s to remove)')
@@ -289,7 +289,7 @@ test('APPLY BANZAI on WoW Forever: the profile is written, adapted to the client
 	-- the report
 	local report = BushidoPrivateRestoreDB.client.report
 	expectEq(report.flavor, 'FOREVER', 'report flavor')
-	expectEq(report.version, '1.5.2', 'report version')
+	expectEq(report.version, '1.5.3', 'report version')
 	expectEq(report.client, 'WoW Forever 1.60.1 (build 70862, Interface 16001)', 'report client')
 	expectEq(#report.changes, 4, 'four settings adapted')
 	expectEq(report.changes[1].path, 'actionbar.bar1.visibility', 'first')
@@ -336,7 +336,7 @@ test('the client report names what this client does not register - and rewrites 
 	expect(string.find(text, 'not on WoW Forever, so left out', 1, true), 'what is left out')
 	HK_PRINTS = {}
 	ns.Restore:Status()
-	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.2 (release; WoW Forever 1.60.1 (build 70862, Interface 16001); profile source 624839aa)', 1, true), 'status: ' .. tostring(HK_PRINTS[1]))
+	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.3 (release; WoW Forever 1.60.1 (build 70862, Interface 16001); profile source 624839aa)', 1, true), 'status: ' .. tostring(HK_PRINTS[1]))
 	expect(string.find(prints(), 'talent tree layout: DPS (Feral Combat)', 1, true), 'status names the tree and selected layout')
 end)
 
@@ -457,7 +457,7 @@ test('the settings open on WoW Forever and name the release and the client', fun
 	ns.Options.Insert()
 	local page = E.Options.args.banzai
 	expectEq(type(page), 'table', 'the BANZAI page')
-	expect(string.find(HK_Plain(page.args.brand.name()), 'BANZAI 1.5.2', 1, true), 'brand version')
+	expect(string.find(HK_Plain(page.args.brand.name()), 'BANZAI 1.5.3', 1, true), 'brand version')
 	expect(string.find(HK_Plain(page.args.brand.name()), 'release', 1, true), 'brand channel')
 	expect(not string.find(HK_Plain(page.args.brand.name()), 'PROOF', 1, true), 'no proof label')
 
@@ -467,7 +467,7 @@ test('the settings open on WoW Forever and name the release and the client', fun
 
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('')
-	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.2 (release, WoW Forever 1.60.1', 1, true), '/banzai: ' .. tostring(HK_PRINTS[1]))
+	expect(string.find(HK_PRINTS[1], 'BANZAI 1.5.3 (release, WoW Forever 1.60.1', 1, true), '/banzai: ' .. tostring(HK_PRINTS[1]))
 end)
 
 test('Banzai never touches gameplay data on WoW Forever either', function()
@@ -658,7 +658,7 @@ test('status: /banzai status and /banzai forever list the window skins and the c
 	HK_PRINTS = {}
 	SlashCmdList.BANZAI('status')
 	local text = prints()
-	expect(string.find(text, 'BANZAI 1.5.2 (release; WoW Forever', 1, true), 'the whole-product version')
+	expect(string.find(text, 'BANZAI 1.5.3 (release; WoW Forever', 1, true), 'the whole-product version')
 	expect(string.find(text, 'window skin - Blizzard Windows: on - Character SKINNED 1', 1, true), 'window skins: ' .. text)
 	expect(string.find(text, 'chat windows: General in the BANZAI CHAT frame; docked by BANZAI: Loot / Trade', 1, true), 'chat arrangement')
 	local report = table.concat(ns.Restore:ClientReport(), '\n')
@@ -706,9 +706,9 @@ test('settings: BANZAI > APPEARANCE > WINDOW SKINS has the six switches, each on
 	expect(string.find(status, 'Chat windows: General in the BANZAI CHAT frame', 1, true), 'chat status')
 	expect(string.find(HK_Plain(section.args.info.name), 'BANZAI skins existing windows; it does not replace them.', 1, true), 'the contract is said on the page')
 	-- the whole-product version: HOME, ABOUT, the brand line
-	expect(string.find(HK_Plain(page.args.home.args.status.name()), 'VERSION   BANZAI 1.5.2   release', 1, true), 'HOME')
-	expect(string.find(HK_Plain(page.args.about.args.version.name), 'Version 1.5.2', 1, true), 'ABOUT')
-	expect(string.find(HK_Plain(page.args.brand.name()), 'BANZAI 1.5.2', 1, true), 'brand')
+	expect(string.find(HK_Plain(page.args.home.args.status.name()), 'VERSION   BANZAI 1.5.3   release', 1, true), 'HOME')
+	expect(string.find(HK_Plain(page.args.about.args.version.name), 'Version 1.5.3', 1, true), 'ABOUT')
+	expect(string.find(HK_Plain(page.args.brand.name()), 'BANZAI 1.5.3', 1, true), 'brand')
 	expectEq(#HK_GAMEPLAY_CALLS, 0, 'no gameplay call anywhere in dev3\'s Restore side')
 end)
 
@@ -872,4 +872,20 @@ test('1.5.2 /banzai arena on WoW Forever: what the client really has is what is 
 	_G.ElvUF_ArenaHeader, _G.ElvUIHiddenFrame, _G.ElvUF = nil, nil, wasElvUF
 	E.private, E.db, E.HiddenFrame = wasPrivate, wasDB, wasHidden
 	back()
+end)
+
+-- 1.5.3 is Retail / Midnight first: WoW Forever keeps 1.5.2's chat and Details geometry until its own port
+test('1.5.3 Midnight first: on WoW Forever the chat panel, the Details meters and their rows are exactly 1.5.2\'s - nothing of the filled layout is written', function()
+	expectEq(T.Filled(), false, 'the filled layout is not used on WoW Forever')
+	expectEq(T.CHAT, T.CHAT_152, 'the chat numbers in use are 1.5.2\'s')
+	expectEq(T.CHAT.x .. '/' .. T.CHAT.inset .. '/' .. T.CHAT.width .. '/' .. T.CHAT.height, '31/10/430/140', 'the chat panel')
+	expectEq(T.ChatMover(32), 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,42', 'its place')
+	expectEq(T.DETAILS_LAYOUT, T.DETAILS_LAYOUT_152, 'the Details numbers in use are 1.5.2\'s')
+	expectEq(T.DETAILS_LAYOUT.width .. '/' .. T.DETAILS_LAYOUT.height .. '/' .. T.DETAILS_LAYOUT.right, '207.5/124/-47.15', 'the meters')
+	expectEq(T.DETAILS_STYLE.rowOffset, -8, 'the rows start where they did')
+	local p = { chat = {}, movers = {} }
+	local chat = T.ApplyChatLayout(p, 32)
+	expectEq(chat.panelWidth .. 'x' .. chat.panelHeight, '430x140', 'the chat panel\'s size as before')
+	expectEq(chat.tabSelector, nil, 'ElvUI\'s tab marks are not touched')
+	expectEq(p.movers.LeftChatMover, 'BOTTOMLEFT,UIParent,BOTTOMLEFT,31,42', 'the mover as before')
 end)

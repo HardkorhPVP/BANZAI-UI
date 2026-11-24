@@ -70,7 +70,7 @@ local _, ns = ...
 local Theme = {}
 ns.Theme = Theme
 
-Theme.VERSION = '1.5.2'
+Theme.VERSION = '1.5.3'
 -- 1.5.0-dev1: a "-dev" build is a private proof (the AFK screen, the BANZAI settings and /banzai status say so)
 Theme.CHANNEL = string.find(Theme.VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 Theme.MEDIA = 'Interface\\AddOns\\BushidoPrivateCompat\\media\\'

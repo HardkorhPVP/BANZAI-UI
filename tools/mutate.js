@@ -23,6 +23,10 @@
 //          strips), the seams (no overlap, no crack, the body under the worn pieces, the band's end clear), the brightness
 //          on every piece, one shared renderer (every panel; Banzai Art = the preview), the 1.3.6 Details gutter kept
 //          (tools/lib/panel.js mutants run the parchment suite, tests/test_parchment.js)
+//   1.5.3  the CHAT + DETAILS full-chassis layout: content bounds, the frozen frames and titles, the header labels' font
+//          inheritance, half size and opacity states, the real chat tabs' routing, title collision and truncation,
+//          Details label ownership, DAMAGE / HEALING symmetry, the materials, the fallback, WoW Forever untouched
+//          (node tools/mutate.js 1.5.3)
 //   node tools/mutate.js font-bakeoff   (after npm run build: only private font-selector contracts)
 //   node tools/mutate.js [1.3.2|1.3.3|1.3.4|1.3.5|1.3.6|1.3.7|1.3.8] [word]   (after npm run build: the Lua mutants change dist/
 //          copies; the milestone's set, 1.3.8 by default; word: only those mutants)
@@ -648,7 +652,92 @@ const MUTANTS_152 = [
   ['arena chassis', PVP, 'a thick chassis', "PvP.CHASSIS = { inset = 1, thickness = 1, alpha = 0.9 }", "PvP.CHASSIS = { inset = 1, thickness = 4, alpha = 0.9 }", BW],
   ['arena chassis', PVP, 'a chassis that reaches away from the bar', "PvP.CHASSIS = { inset = 1, thickness = 1, alpha = 0.9 }", "PvP.CHASSIS = { inset = 12, thickness = 1, alpha = 0.9 }", BW],
 ];
-const SETS = { '1.5.2': MUTANTS_152, weave: MUTANTS_WEAVE, dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
+// 1.5.3 CHAT + DETAILS FULL-CHASSIS LAYOUT (Midnight): the content regions inside the unchanged frames, the
+// header labels' font inheritance, half size and opacity states, the real chat tabs' routing, Details label
+// ownership, DAMAGE / HEALING symmetry, the materials, the fallback, and nothing of it on WoW Forever
+const HEADER = 'dist/BushidoPrivateCompat/Header.lua';
+const HD = 'header';
+const FC = 'forever_compat';
+const FR = 'forever_restore';
+const MUTANTS_153 = [
+  // content bounds
+  ['content bounds', TRANSFORM, 'the chat panel left at 1.5.2\'s size (the text does not fill the frame)', "T.CHAT_FILL = { x = 9, inset = 9, width = 474, height = 159, tabSelector = 'NONE' }", "T.CHAT_FILL = { x = 9, inset = 9, width = 430, height = 140, tabSelector = 'NONE' }"],
+  ['content bounds', TRANSFORM, 'the chat panel 6 too far right (the text over the right stalk)', "T.CHAT_FILL = { x = 9, inset = 9, width = 474, height = 159, tabSelector = 'NONE' }", "T.CHAT_FILL = { x = 15, inset = 9, width = 474, height = 159, tabSelector = 'NONE' }"],
+  ['content bounds', TRANSFORM, 'the chat text up under the top stalk (through the CHAT title)', "T.CHAT_FILL = { x = 9, inset = 9, width = 474, height = 159, tabSelector = 'NONE' }", "T.CHAT_FILL = { x = 9, inset = 9, width = 474, height = 168, tabSelector = 'NONE' }"],
+  ['content bounds', TRANSFORM, 'the chat panel not written with the character layer (an older character keeps 430 x 140)', "\tT.ApplyChatLayout(p, opts.barHeight) -- 1.5.3: with the panel's size and the tab marks\n", ''],
+  ['content bounds', COMPAT, 'Banzai Art\'s chat content out of step with the panel', 'Compat.CHAT_CONTENT = { x = 14, width = 464, height = 127, bottom = 14 }', 'Compat.CHAT_CONTENT = { x = 14, width = 464, height = 136, bottom = 14 }', HD],
+  ['content bounds', COMPAT, 'the Details meters left at 1.5.2\'s width', "\twidth = 224.655, height = 128, gap = 15, title = 12, right = -29.995, bottom = 42,", "\twidth = 207.5, height = 128, gap = 15, title = 12, right = -29.995, bottom = 42,", HD],
+  ['content bounds', COMPAT, 'the Details meters up to the top stalk (through the titles)', "\twidth = 224.655, height = 128, gap = 15, title = 12, right = -29.995, bottom = 42,", "\twidth = 224.655, height = 140, gap = 15, title = 12, right = -29.995, bottom = 42,", HD],
+  ['content bounds', TRANSFORM, 'the Details meters written at 1.5.2\'s size', 'T.DETAILS_LAYOUT_FILL = { width = 224.655, height = 128, gap = 15, right = -29.995, bottom = 42 }', 'T.DETAILS_LAYOUT_FILL = { width = 207.5, height = 124, gap = 15, right = -29.995, bottom = 42 }'],
+  ['content bounds', TRANSFORM, 'the rows still 8 under the window top (the tenth row leaves the window)', 'T.DETAILS_ROW_OFFSET_152, T.DETAILS_ROW_OFFSET_FILL = -8, -4', 'T.DETAILS_ROW_OFFSET_152, T.DETAILS_ROW_OFFSET_FILL = -8, -12'],
+  ['content bounds', RESTORE, 'an update from 1.5.2 leaves the rows where they were', "\t\t\tif T.Filled() then self:ApplyDetailsStyle() end\n", ''],
+  // the frozen frames and titles
+  ['frozen geometry', COMPAT, 'the Details frame moves with the wider meters', "\tframeWidth = 493.31, frameHeight = 161, centerX = -232.155, centerY = 70,", "\tframeWidth = 493.31, frameHeight = 161, centerX = -215, centerY = 70,", HD],
+  ['frozen geometry', COMPAT, 'the DAMAGE / HEALING titles move out with the wider meters', 'Compat.DETAILS_TITLE.half = 215', 'Compat.DETAILS_TITLE.half = 232.155', HD],
+  // title-font inheritance
+  ['title-font inheritance', HEADER, 'the labels in the display face whatever the title is really set in', "\t\tif type(path) == 'string' and PlainNumber(size) and size > 0 then return path, size, flags or '' end", "\t\tif false then return path, size, flags or '' end", HD],
+  ['title-font inheritance', HEADER, 'the labels in the Information Font always', "\tif fallback then path = want end\n\treturn path, size * self.CONTRACT.ratio, flags, fallback", "\tpath = Theme:SmallFont()\n\treturn path, size * self.CONTRACT.ratio, flags, fallback", HD],
+  ['title-font inheritance', HEADER, 'the title\'s flags dropped (no outline on the labels)', "\tlocal ok = fs:SetFont(path, size, flags)\n", "\tlocal ok = fs:SetFont(path, size, '')\n", HD],
+  ['title-font inheritance', HEADER, 'ElvUI\'s restyling of a chat window is not followed (its own tab font stays)', "\t\tif type(CH.StyleChat) == 'function' then hooksecurefunc(CH, 'StyleChat', relayout) end\n", '', HD],
+  // the 50 % size
+  ['half size', HEADER, 'the labels at 60 % of the title', 'Header.CONTRACT = { ratio = 0.5, selected = 1.0, inactive = 0.5, hover = 0.8 }', 'Header.CONTRACT = { ratio = 0.6, selected = 1.0, inactive = 0.5, hover = 0.8 }', HD],
+  ['half size', HEADER, 'the labels at the title\'s own size', "\treturn path, size * self.CONTRACT.ratio, flags, fallback", "\treturn path, size, flags, fallback", HD],
+  ['half size', HEADER, 'the half size rounded down (11 for a 23 title)', "\treturn path, size * self.CONTRACT.ratio, flags, fallback", "\treturn path, math.floor(size * self.CONTRACT.ratio), flags, fallback", HD],
+  // the opacity states
+  ['active alpha', HEADER, 'the selected label at 0.9', 'Header.CONTRACT = { ratio = 0.5, selected = 1.0, inactive = 0.5, hover = 0.8 }', 'Header.CONTRACT = { ratio = 0.5, selected = 0.9, inactive = 0.5, hover = 0.8 }', HD],
+  ['inactive alpha', HEADER, 'the inactive labels at 0.6 (ElvUI\'s own value)', 'Header.CONTRACT = { ratio = 0.5, selected = 1.0, inactive = 0.5, hover = 0.8 }', 'Header.CONTRACT = { ratio = 0.5, selected = 1.0, inactive = 0.6, hover = 0.8 }', HD],
+  ['inactive alpha', HEADER, 'the opacities reversed (the selected label dim)', "\tif selected then return C.selected end\n", "\tif not selected then return C.selected end\n", HD],
+  ['inactive alpha', HEADER, 'the game\'s and ElvUI\'s own tab alpha is left standing', "\tif pinning then return end\n\tlocal st = Header.chat.state[tab]", "\tif true then return end\n\tlocal st = Header.chat.state[tab]", HD],
+  ['hover alpha', HEADER, 'no feedback under the pointer', "\tif hover then return C.hover end\n", '', HD],
+  ['hover alpha', HEADER, 'a tab stays bright after the pointer left', "\t\t\ts.hover = false\n\t\t\tSetTabAlpha(self, s)\n\t\t\tif s.text and s.text.Show then s.text:Show() end", "\t\t\ts.hover = true\n\t\t\tSetTabAlpha(self, s)\n\t\t\tif s.text and s.text.Show then s.text:Show() end", HD],
+  // the real tabs and their selection
+  ['selected-tab routing', HEADER, 'the first tab is always the selected one', "\t\t\t\tlist[#list + 1] = { chat = chat, tab = tab, text = text, name = name, selected = (chat == selected) }", "\t\t\t\tlist[#list + 1] = { chat = chat, tab = tab, text = text, name = name, selected = (chat == dock.primary) }", HD],
+  ['selected-tab routing', HEADER, 'the game\'s own tab update is not followed (its anchors come back)', "\thooksecurefunc('FCFDock_UpdateTabs', function() if not Header:ChatIntact() then relayout() end end)\n", '', HD],
+  ['selected-tab routing', HEADER, 'a tab of the dock\'s strip stays in it (cut off outside its rectangle)', "\t\t\tif item.chat ~= dock.primary and tab.GetParent and tab.SetParent and tab:GetParent() ~= dock then tab:SetParent(dock) end\n", '', HD],
+  ['selected-tab routing', HEADER, 'the tabs presented while the BANZAI chat frame is hidden', "\tif not (frame and Compat.Active() and Theme:DB().chatFrame and frame:IsShown()) then return false end", "\tif not (frame) then return false end", HD],
+  ['selected-tab routing', HEADER, 'every idle dock update lays the tabs out again (work on every frame)', "\thooksecurefunc('FCFDock_UpdateTabs', function() if not Header:ChatIntact() then relayout() end end)", "\thooksecurefunc('FCFDock_UpdateTabs', function() relayout() end)", HD],
+  ['selected-tab routing', HEADER, 'a selection the dock holds is not noticed', "\tif #docked ~= C.count or SelectedWindow(dock) ~= C.selected then return false end", "\tif #docked ~= C.count then return false end", HD],
+  ['selected-tab routing', HEADER, 'tabs the game anchored and sized again are not noticed', "\t\tif anchor ~= chassis or tab:GetNumPoints() ~= 1 then return false end\n\t\tif not PlainNumber(width) or math.abs(width - math.max(1, st.width or 0)) > 0.01 then return false end\n", '', HD],
+  ['selected-tab routing', HEADER, 'the tabs presented though General is not in ElvUI\'s left panel', "\tif not (CH and dock and CH.LeftChatWindow == dock.primary) then return false end", "\tif not (CH and dock) then return false end", HD],
+  ['selected-tab routing', HEADER, 'ElvUI\'s tab font is not given back when BANZAI lets go', "\t\t\t\tif CH and CH.db and st.text.FontTemplate then Call(st.text.FontTemplate, st.text, CH.db.tabFont, CH.db.tabFontSize, CH.db.tabFontOutline) end\n", '', HD],
+  // title collision, overflow, truncation
+  ['title collision', HEADER, 'the labels run over the corners\' rope ties and out of the frame', "\tlocal edge = P.outer + d / 2 + P.tie * d / 2 + S.corner", "\tlocal edge = -60", HD],
+  ['title collision', HEADER, 'too many tabs overflow the stalk (nothing is shortened)', "\tfor i = 1, n do out[i] = math.min(widths[i], level) end\n\treturn out, gap, true", "\tfor i = 1, n do out[i] = widths[i] end\n\treturn out, gap, true", HD],
+  ['title collision', HEADER, 'every tab on the left of the title', "\tlocal half = math.ceil(#list / 2)", "\tlocal half = #list", HD],
+  ['truncation', HEADER, 'a shortened label has no tooltip', "\t\t\tif s.truncated then s.tip = ShowTip(self, s.name) end", "\t\t\tif false then s.tip = ShowTip(self, s.name) end", HD],
+  ['truncation', HEADER, 'a shortened label\'s letters keep their full width (they run into the next label)', "\t\t\tif slot.truncated and text.SetWidth then text:SetWidth(math.max(1, slot.width - item.lead - 2 * S.pad)) end\n", '', HD],
+  ['frozen geometry', COMPAT, 'the Details frame shifts 17 units while the right window is still 1.5.2\'s width', "\t\tif old and old ~= D and width and math.abs(width - old.width) < math.abs(width - D.width) then centerX = old.centerX end\n", '', HD],
+  // DAMAGE / HEALING symmetry
+  ['symmetry', COMPAT, 'the right meter 2 further in (unequal outer padding, the gutter off the divider)', "\twidth = 224.655, height = 128, gap = 15, title = 12, right = -29.995, bottom = 42,", "\twidth = 224.655, height = 128, gap = 15, title = 12, right = -31.995, bottom = 42,", HD],
+  ['symmetry', RESTORE, 'the left meter 2 lower than the right one', "\t\twindow.libwindow.point, window.libwindow.x, window.libwindow.y, window.libwindow.scale = 'BOTTOMRIGHT', x, bottom, scale", "\t\twindow.libwindow.point, window.libwindow.x, window.libwindow.y, window.libwindow.scale = 'BOTTOMRIGHT', x, (window == left) and bottom - 2 or bottom, scale"],
+  ['symmetry', RESTORE, 'the left meter 3 narrower than the right one', "\t\twindow.posicao.normal.w = L.width / scale", "\t\twindow.posicao.normal.w = ((window == left) and L.width - 3 or L.width) / scale"],
+  ['symmetry', TRANSFORM, 'the gutter 4 wider than Banzai Art\'s (the left meter over the left stalk)', 'T.DETAILS_LAYOUT_FILL = { width = 224.655, height = 128, gap = 15, right = -29.995, bottom = 42 }', 'T.DETAILS_LAYOUT_FILL = { width = 224.655, height = 128, gap = 19, right = -29.995, bottom = 42 }'],
+  // materials
+  ['materials', HEADER, 'ElvUI\'s own tab colour is left on the labels', "\tfs:SetTextColor(ink[1], ink[2], ink[3], 1)\n", '', HD],
+  ['materials', HEADER, 'the labels on parchment only', "\tif not Header.Available() then return false end\n\tlocal frame = Compat.chatFrame", "\tif not Header.Available() or Theme:DB().panelBackground ~= 'PARCHMENT' then return false end\n\tlocal frame = Compat.chatFrame", HD],
+  // fallback
+  ['title collision', HEADER, 'the labels run under the CHAT title', "\treturn { from = edge, to = x0 - S.clear }, { from = x1 + S.clear, to = chassis.bw - edge }, line", "\treturn { from = edge, to = x0 + 30 }, { from = x1 + S.clear, to = chassis.bw - edge }, line", HD],
+  // outlined letters on the bamboo itself, the CHAT frame's top stalk 2 lower, no Details label
+  ['materials', HEADER, 'dark letters (lost in their own black stroke)', "\tink = { 0.96, 0.95, 0.92 }, edge = { 0, 0, 0, 1 }, edgeOffset = 1 }", "\tink = { 0.12, 0.12, 0.12 }, edge = { 0, 0, 0, 1 }, edgeOffset = 1 }", HD],
+  ['label stroke', HEADER, 'no black edge under the letters', "\tif fs.SetShadowColor then fs:SetShadowColor(S.edge[1], S.edge[2], S.edge[3], S.edge[4]) end\n", '', HD],
+  ['label stroke', HEADER, 'a light edge (light letters on a light stroke)', "edge = { 0, 0, 0, 1 }, edgeOffset = 1 }", "edge = { 0.9, 0.9, 0.9, 1 }, edgeOffset = 1 }", HD],
+  ['label stroke', HEADER, 'a half-opaque edge (an inactive label\'s stroke at a quarter)', "edge = { 0, 0, 0, 1 }, edgeOffset = 1 }", "edge = { 0, 0, 0, 0.5 }, edgeOffset = 1 }", HD],
+  ['label stroke', HEADER, 'the edge offset dropped (no edge to see)', "\tif fs.SetShadowOffset then fs:SetShadowOffset(S.edgeOffset, -S.edgeOffset) end\n", "\tif fs.SetShadowOffset then fs:SetShadowOffset(0, 0) end\n", HD],
+  ['top stalk', COMPAT, 'the CHAT frame\'s top stalk left where it was', "Compat.CHAT_TOP = { drop = 2 }", "Compat.CHAT_TOP = { drop = 0 }", HD],
+  ['top stalk', COMPAT, 'the drop is asked for and not laid out', "\tlocal axis = { top = P.outer + half + drop,", "\tlocal axis = { top = P.outer + half,", HD],
+  ['top stalk', COMPAT, 'every frame\'s top stalk lowered (DAMAGE / HEALING too)', "\tlocal drop = holder.topDrop or 0\n", "\tlocal drop = 2\n", HD],
+  ['top stalk', HEADER, 'the tabs left above the lowered stalk', "\tif not PlainNumber(line) then line = P.outer + d / 2 end\n", "\tline = P.outer + d / 2\n", HD],
+  ['fallback', HEADER, 'a label the title\'s face cannot draw stays in it (missing glyphs)', "\tif fallback then path = want end\n", '', HD],
+  ['fallback', HEADER, 'a secret name is set in the title\'s face unchecked', "\t\tlocal _, _, _, fallback = self:ApplyFont(item.text, title, item.name or false)", "\t\tlocal _, _, _, fallback = self:ApplyFont(item.text, title, item.name)", HD],
+  ['fallback', HEADER, 'a font file the client refuses leaves the label without a font', "\t\tpath, fallback = Theme:SmallFont(), true\n\t\tfs:SetFont(path, size, flags)", "\t\tpath, fallback = Theme:SmallFont(), true", HD],
+  ['fallback', HEADER, 'a fallback label smaller than half the title', "\t\tpath, fallback = Theme:SmallFont(), true\n\t\tfs:SetFont(path, size, flags)", "\t\tpath, fallback = Theme:SmallFont(), true\n\t\tfs:SetFont(path, size - 2, flags)", HD],
+  // nothing on WoW Forever before its port
+  ['Forever untouched', HEADER, 'the header labels run on WoW Forever', "\treturn not (ns.Flavor and ns.Flavor.IsForever())\nend\n\n---------------------------------------------------------------------------\n-- The contract: font, size, opacity", "\treturn true\nend\n\n---------------------------------------------------------------------------\n-- The contract: font, size, opacity", FC],
+  ['Forever untouched', COMPAT, 'the filled Details geometry on WoW Forever', 'function Compat.Filled() return not (ns.Flavor and ns.Flavor.IsForever()) end', 'function Compat.Filled() return true end', FC],
+  ['Forever untouched', TRANSFORM, 'the filled chat panel and meters written on WoW Forever', 'function T.Filled() return not (ns.Flavor and ns.Flavor.IsForever()) end', 'function T.Filled() return true end', FR],
+  ['Forever untouched', TRANSFORM, 'ElvUI\'s tab marks switched off on WoW Forever', "\tif T.CHAT.tabSelector then chat.tabSelector = T.CHAT.tabSelector end\n", "\tchat.tabSelector = 'NONE'\n", FR],
+];
+const SETS = { '1.5.3': MUTANTS_153, '1.5.2': MUTANTS_152, weave: MUTANTS_WEAVE, dev3: MUTANTS_DEV3, release: MUTANTS_RELEASE, '1.3.2': MUTANTS_132, '1.3.3': MUTANTS_133, '1.3.4': MUTANTS_134, '1.3.5': MUTANTS_135, '1.3.6': MUTANTS_136, '1.3.7': MUTANTS_137, '1.3.8': MUTANTS_138, 'font-bakeoff': MUTANTS_FONT_BAKEOFF, forever: MUTANTS_FOREVER };
 
 function suiteFor(file) {
   if (file.startsWith('dist/BushidoPrivateRestore/')) return 'restore';

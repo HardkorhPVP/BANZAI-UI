@@ -17,7 +17,7 @@ Credits: [BANZAI-UI-CREDITS.md](credits/BANZAI-UI-CREDITS.md) · Notices: [THIRD
 ### Install
 
 1. Install ElvUI and JiberishMedia.
-2. Unzip `BANZAI-UI-1.5.2.zip` and copy both folders - `BushidoPrivateCompat` (shown in game as **Banzai Art**) and `BushidoPrivateRestore` (shown as **Banzai**) - into `World of Warcraft\_retail_\Interface\AddOns\` (Retail) or `World of Warcraft\_forever_\Interface\AddOns\` (WoW Forever).
+2. Unzip `BANZAI-UI-1.5.3.zip` and copy both folders - `BushidoPrivateCompat` (shown in game as **Banzai Art**) and `BushidoPrivateRestore` (shown as **Banzai**) - into `World of Warcraft\_retail_\Interface\AddOns\` (Retail) or `World of Warcraft\_forever_\Interface\AddOns\` (WoW Forever).
 3. Start the game, make sure **Banzai** and **Banzai Art** are enabled, log in and type `/banzai`.
 
 The folder names are kept for saved-variable continuity; the in-game names are Banzai and Banzai Art.

@@ -150,7 +150,7 @@ local Restore = {}
 ns.Restore = Restore
 
 local NAME = 'BANZAI'
-local VERSION = '1.5.2'
+local VERSION = '1.5.3'
 -- A "-dev" version is a private proof build, never a release; every proof build has its own version.
 local CHANNEL = string.find(VERSION, '-dev', 1, true) and 'PRIVATE PROOF' or 'release'
 ns.VERSION = VERSION
@@ -2240,6 +2240,24 @@ function Restore:SetDetailsStyle(style)
 	return self:ApplyDetailsStyle()
 end
 
+-- 1.5.3 /banzai header: Banzai Art's own read-only report of the header labels (Header.lua)
+function Restore:HeaderReport()
+	local lines = { format('%s %s (%s) header labels - read only, nothing is changed.', NAME, VERSION, CHANNEL) }
+	local art = _G.BanzaiCompat
+	local header = art and art.Header
+	if not (header and header.Report) then
+		lines[#lines + 1] = 'Banzai Art is not loaded.'
+		return lines
+	end
+	local ok, report = pcall(header.Report, header)
+	if not ok then
+		lines[#lines + 1] = 'the report failed: ' .. tostring(report)
+		return lines
+	end
+	for _, line in ipairs(report) do lines[#lines + 1] = line end
+	return lines
+end
+
 local detailsEvents = CreateFrame('Frame')
 detailsEvents:RegisterEvent('PLAYER_REGEN_ENABLED')
 detailsEvents:SetScript('OnEvent', function()
@@ -2295,9 +2313,12 @@ SlashCmdList.BANZAI = function(input)
 	elseif command == 'frames' then
 		-- 1.5.2: the bar texture on every kind of unit frame BANZAI dresses (read only)
 		for _, line in ipairs(Restore:FrameReport()) do Print(line) end
+	elseif command == 'header' then
+		-- 1.5.3: the CHAT / DAMAGE / HEALING titles' fonts, their labels' fonts, sizes and opacities, the content gutters (read only)
+		for _, line in ipairs(Restore:HeaderReport()) do Print(line) end
 	elseif command == 'status' then
 		Restore:Status()
-		Print('commands: /banzai (options) | status | forever | arena | frames | apply | restore | theme vibrant|class | bars smooth|weave | role auto|dps|healer | editmode')
+		Print('commands: /banzai (options) | status | forever | arena | frames | header | apply | restore | theme vibrant|class | bars smooth|weave | role auto|dps|healer | editmode')
 	elseif command == 'forever' or command == 'preflight' or command == 'client' then
 		-- 1.5.0-dev1: the client, the prerequisites as Banzai really uses them, and what the client adapter did
 		for _, line in ipairs(Restore:ClientReport()) do Print(line) end
@@ -2328,15 +2349,20 @@ function Restore:OnLogin()
 		record.applied.version = VERSION
 		record.applied.upgraded = date('%Y-%m-%d %H:%M:%S')
 		if CHANNEL == 'release' then
-			-- 1.5.2: what is new is named once, with where to change the bar texture
-			Print(format('updated to %s %s (%s): BANZAI Weave now covers party, raid, boss and arena enemy frames, and arena enemies show as one frame system; BANZAI Smooth stays available under BANZAI > APPEARANCE > BAR TEXTURE. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail'))
+			-- 1.5.3: what is new is named once, on the client that has it (WoW Forever keeps its 1.5.2 chat and Details layout)
+			local new = T.Filled() and ': chat and the DAMAGE / HEALING meters now fill their bamboo frames, and the chat tabs stand on the CHAT header' or ''
+			Print(format('updated to %s %s (%s)%s. /banzai forever shows the client report.', NAME, VERSION, Flavor and Flavor.ClientText() or 'Retail', new))
 		else
 			Print(format('updated to %s %s (%s, %s). /banzai forever shows the client report.', NAME, VERSION, CHANNEL, Flavor and Flavor.ClientText() or 'Retail')) -- 1.5.0-dev1
 		end
 		if self.ApplyDetailsInk then self:ApplyDetailsInk() end -- 1.1.1: a character on parchment gets the readable text at once
 		-- 1.3.6: the two windows placed again around the centre gutter (geometry only), on Banzai's Details profile only
 		local details = _G.Details
-		if details and details.GetCurrentProfileName and details:GetCurrentProfileName() == T.PROFILE then self:LayoutDetailsSoon(true) end
+		if details and details.GetCurrentProfileName and details:GetCurrentProfileName() == T.PROFILE then
+			self:LayoutDetailsSoon(true)
+			-- 1.5.3: and the rows start where the filled window's top is (Details' own row settings, the profile and the two windows)
+			if T.Filled() then self:ApplyDetailsStyle() end
+		end
 		result = true
 	end
 	-- 1.3.0: the shared Details profile shows this character's meter style (only when it differs from what was applied last)

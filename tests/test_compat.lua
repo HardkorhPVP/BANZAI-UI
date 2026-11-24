@@ -372,7 +372,7 @@ local function bambooFrame(holder)
 		expect(t.sublevel > piece(holder, 'top', 0.5).texture.sublevel, corner .. ': the rope lies over the stalks')
 	end
 	expectEq(holder.bundles, nil, 'no corner bundles')
-	expectNear(holder.axis.top, P.outer + d / 2, 'top stalk axis: outer margin + half the stalk')
+	expectNear(holder.axis.top, P.outer + d / 2 + (holder.topDrop or 0), 'top stalk axis: outer margin + half the stalk (1.5.3: the CHAT frame\'s 2 lower)')
 	expectNear(holder.axis.left, P.outer + d / 2, 'left stalk axis')
 	expectNear(holder.axis.bottom, holder.bh - P.outer - d / 2, 'bottom stalk axis')
 	expectNear(holder.axis.right, holder.bw - P.outer - d / 2, 'right stalk axis')
@@ -447,10 +447,10 @@ test('1.1.0 Details: bamboo frame around both meters, flush with the bottom pane
 	expectEq(dmg.points[1][1], 'LEFT', 'DAMAGE left-aligned')
 	expectEq(heal.points[1][1], 'RIGHT', 'HEALING right-aligned')
 	local center = frame.bw / 2
-	expectNear(dmg.points[1][4] + TT.pad, center + D.centerX + TT.inset, 'DAMAGE starts at the damage window\'s left edge')
+	expectNear(dmg.points[1][4] + TT.pad, center - TT.half + TT.inset, '1.5.3: DAMAGE stays where 1.3.6 put it (215 left of the centre) though the window is wider now; it started at the damage window\'s left edge')
 	local healRight = heal.points[1][4] - TT.pad
 	expect(healRight > center + D.gap / 2 + 100, 'HEALING in the healing half')
-	expect(healRight <= center - D.centerX - TT.inset + 1e-6, 'inside the healing window')
+	expect(healRight <= center + TT.half - TT.inset + 1e-6, 'inside the healing window (1.5.3: where it was - 215 right of the centre)')
 	local tieLeft = frame.axis.right - P.tie * frame.stalkDiameter / 2
 	expect(healRight <= tieLeft - TT.bamboo + 1e-6, 'clear of the top-right rope tie')
 	-- strong red / green per-letter gradients
@@ -480,7 +480,8 @@ test('1.1.0 Details: bamboo frame around both meters, flush with the bottom pane
 	expect(dmg.accent.gradient[2].r > 0.9, 'red accent again')
 	local h = TT.size * 0.78
 	local accentBottom = (D.frameHeight / 2 + D.centerY - D.height) - line - h / 2 - TT.gap - TT.accent
-	expect(accentBottom > 6, 'accent line well above the windows\' top edge (' .. accentBottom .. ')')
+	-- 1.5.3: the windows' top edge is 4 higher (12 under the top stalk, was 16): the accent line ends 4.42 above it (was 8.42)
+	expect(accentBottom > 4, 'accent line above the windows\' top edge (' .. accentBottom .. ')')
 end)
 
 test('1.1.0 chat: the same frame as Details in the lower left, flush, the chat panel upright in the middle, bamboo all round', function()
@@ -536,7 +537,7 @@ test('0.8.0 settings: PvP choices and the preview state are BANZAI settings (Cha
 	local D = Theme.DEFAULTS
 	expectEq(D.pvpCastColors and D.pvpDispelGlow and D.pvpDefensives, true, 'PvP switches on by default')
 	expectEq(D.previewState, 'NORMAL', 'preview NORMAL by default')
-	expectEq(Theme.VERSION, '1.5.2', 'version')
+	expectEq(Theme.VERSION, '1.5.3', 'version')
 	Theme:DB().pvpDefensives = false
 	Theme:DB().previewState = 'CC'
 	local out = Theme:Export()
@@ -2159,7 +2160,7 @@ test('1.0.0 AFK screen: the character turning in the middle, HUD hidden while it
 	expect(string.find(HK_Plain(f.where.text), 'LEVEL 80', 1, true) and string.find(HK_Plain(f.where.text), 'DORNOGAL', 1, true), 'level and zone')
 	expect(string.find(f.logo.path, 'BanzaiLogo', 1, true), 'BANZAI')
 	expect(string.find(HK_Plain(f.brand.text), 'UI BY HARDKORH', 1, true), 'UI BY HARDKORH')
-	expect(string.find(HK_Plain(f.version.text), 'BANZAI 1.5.2', 1, true), 'version')
+	expect(string.find(HK_Plain(f.version.text), 'BANZAI 1.5.3', 1, true), 'version')
 	expect(string.find(f.tree.path, 'BanzaiBonsai', 1, true), 'the bamboo tree')
 	expect(f.art and f.art.icon, 'the Fabled class art')
 	expect(f.glass.gradient and f.glass.gradient[2].a < 0.95, 'dark translucent glass')
@@ -4885,10 +4886,10 @@ test('1.3.6 the Details centre gutter: genuine empty space between the DAMAGE an
 	C:Refresh()
 	-- the outer panel and the composition as in 1.3.5
 	expectEq(frame.w .. 'x' .. frame.h, '493.31x161', 'the bamboo frame the same size (not widened)')
-	expectEq(D.frameWidth .. '/' .. D.centerX .. '/' .. D.right, '493.31/-215/-47.15', 'its size and place beside the windows as before')
+	expectEq(D.frameWidth .. '/' .. D.centerX .. '/' .. D.right, '493.31/-232.155/-29.995', '1.5.3: the same size; the wider windows reach 4 from the side stalks, so the frame sits -232.155 from the right window (the same place on screen: -29.995 - 232.155 = -47.15 - 215)')
 	expectEq(frame.points[1][2], HK_DetailsWindow2.baseframe, 'still following the right window')
-	expectEq(D.width .. '/' .. D.gap, '207.5/15', 'both meters equally narrower, a real gutter between them')
-	expectEq(2 * D.width + D.gap, 2 * 212 + 6, 'the meters and the gutter exactly as wide as the meters and the gap were (430): the outer edges stay')
+	expectEq(D.width .. '/' .. D.gap, '224.655/15', '1.5.3: both meters equally wide, the 1.3.6 gutter between them')
+	expectNear(2 * D.width + D.gap, 472.31 - 2 * 4, '1.5.3: the meters and the gutter fill the room between the side stalks less 4 each side (1.3.6: 430)')
 	-- the gutter: window 2's right edge is centerX right of the frame's centre, window 1's left edge centerX left of it
 	local center = frame.bw / 2
 	local w2Right, w1Left = center - D.centerX, center + D.centerX
@@ -5121,7 +5122,7 @@ test('1.3.7 the parchment on the panels: 13 textures per panel made once (the bo
 	C:Set('panelBackground', 'GLASS')
 	-- the 1.3.6 Details gutter and the divider untouched by the material
 	local D = C.DETAILS
-	expectEq(D.width .. '/' .. D.gap .. '/' .. D.frameWidth .. 'x' .. D.frameHeight, '207.5/15/493.31x161', 'the 1.3.6 gutter and the Details frame')
+	expectEq(D.width .. '/' .. D.gap .. '/' .. D.frameWidth .. 'x' .. D.frameHeight, '224.655/15/493.31x161', 'the 1.3.6 gutter, the 1.5.3 meters and the Details frame')
 	expectEq(C.detailsFrame.divider[1].layer, 'BORDER', 'the divider over the parchment (BORDER over BACKGROUND)')
 	-- static: nothing runs per frame
 	for _, holder in ipairs(frames) do expectEq(holder.scripts.OnUpdate, nil, holder.artKind .. ': no OnUpdate') end

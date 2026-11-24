@@ -217,8 +217,12 @@ function config() {
     const onlyForever = settings(forever).filter((k) => !retail.has(k));
     const differ = settings(retail).filter((k) => forever.has(k) && forever.get(k) !== retail.get(k));
     evidence.differences[style] = differ.map((k) => ({ path: k, retail: retail.get(k), forever: forever.get(k) }));
-    check(`BANZAI ${style}: WoW Forever gets every setting Retail gets (none dropped, none added)`, onlyRetail.length === 0 && onlyForever.length === 0, `${settings(forever).length} settings`);
-    check(`BANZAI ${style}: exactly the four bar visibilities differ between the clients (the pet battle condition)`, JSON.stringify(differ.sort()) === JSON.stringify(['profile.actionbar.bar1.visibility', 'profile.actionbar.bar3.visibility', 'profile.actionbar.bar5.visibility', 'profile.actionbar.bar6.visibility']), differ.join(', '));
+    // 1.5.3 (Retail / Midnight first): the chat tabs stand on the CHAT frame there, so Retail alone switches ElvUI's
+    // selector marks off; the filled chat panel and the Details rows' place differ until the Forever port
+    const RETAIL_153 = ['profile.chat.tabSelector'];
+    const DIFFER_153 = ['details.instances.1.row_info.row_offsets.top', 'details.instances.2.row_info.row_offsets.top', 'profile.chat.panelHeight', 'profile.chat.panelWidth', 'profile.movers.LeftChatMover'];
+    check(`BANZAI ${style}: WoW Forever gets every setting Retail gets (none dropped, none added) but the 1.5.3 chat tab selector`, JSON.stringify(onlyRetail.sort()) === JSON.stringify(RETAIL_153) && onlyForever.length === 0, `${settings(forever).length} settings; Retail only: ${onlyRetail.join(', ') || 'none'}; Forever only: ${onlyForever.join(', ') || 'none'}`);
+    check(`BANZAI ${style}: exactly the four bar visibilities (the pet battle condition) and the 1.5.3 chat / Details layout differ between the clients`, JSON.stringify(differ.sort()) === JSON.stringify(['profile.actionbar.bar1.visibility', 'profile.actionbar.bar3.visibility', 'profile.actionbar.bar5.visibility', 'profile.actionbar.bar6.visibility'].concat(DIFFER_153).sort()), differ.join(', '));
     check(`BANZAI ${style}: no pet battle or spec condition is left in the Forever profile`, ![...forever.entries()].some(([k, v]) => /^profile\./.test(k) && /petbattle|\bspec:/i.test(v)));
     check(`BANZAI ${style}: Retail's profile is not adapted at all (no adapter record)`, ![...retail.keys()].some((k) => k.startsWith('ADAPTER.')) && [...forever.keys()].filter((k) => k.startsWith('ADAPTER.')).length === 4);
     check(`BANZAI ${style}: RESTORE PRE-BANZAI returns the pre-Banzai ElvUI, private and Details profiles and the UI scale`, forever.get('STATE.restored') === 'string:HARDKORHUI / breezy / DarrenUI / UIScale 0.53333333333333', forever.get('STATE.restored'));
